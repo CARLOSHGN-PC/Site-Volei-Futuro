@@ -39,6 +39,18 @@
             z-index: -100;
             object-fit: cover;
         }
+        /* Scrollbar customizada para o modal */
+        .modal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+        .modal-body::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+        .modal-body::-webkit-scrollbar-thumb {
+            background-color: #4a5568;
+            border-radius: 10px;
+            border: 2px solid #2d3748;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
@@ -53,6 +65,7 @@
                 <a href="#home" class="nav-link hover:text-red-500 transition duration-300">Home</a>
                 <a href="#sobre" class="nav-link hover:text-red-500 transition duration-300">Sobre</a>
                 <a href="#noticias" class="nav-link hover:text-red-500 transition duration-300">Notícias</a>
+                <a href="#calendario" class="nav-link hover:text-red-500 transition duration-300">Calendário</a>
                 <a href="#galeria" class="nav-link hover:text-red-500 transition duration-300">Galeria</a>
                 <a href="#loja" class="nav-link hover:text-red-500 transition duration-300">Loja</a>
                 <a href="#carrinho" class="relative text-white hover:text-red-500 transition duration-300">
@@ -60,7 +73,9 @@
                     <span id="cart-badge" class="cart-badge bg-red-600 text-white rounded-full flex items-center justify-center font-bold">0</span>
                 </a>
                 <a href="#inscricao" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 shadow-lg">Inscreva-se</a>
-                <a href="#login" class="nav-link hover:text-red-500 transition duration-300 text-sm text-gray-400">Admin</a>
+                <a href="#login" class="w-9 h-9 flex items-center justify-center bg-gray-700 rounded-full hover:bg-red-600 transition duration-300" title="Acesso do Administrador">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                </a>
             </div>
             <div class="md:hidden">
                 <button id="mobile-menu-button" class="text-white">
@@ -73,6 +88,7 @@
             <a href="#home" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Home</a>
             <a href="#sobre" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Sobre</a>
             <a href="#noticias" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Notícias</a>
+            <a href="#calendario" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Calendário</a>
             <a href="#galeria" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Galeria</a>
             <a href="#loja" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Loja</a>
             <a href="#carrinho" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Carrinho</a>
@@ -98,15 +114,17 @@
     </footer>
 
     <!-- MODAL LIGHTBOX PARA GALERIA (GLOBAL) -->
-    <div id="lightbox-modal" class="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center p-4 z-[100] hidden" onclick="closeModal()">
+    <div id="lightbox-modal" class="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center p-4 z-[100] hidden" onclick="closeModal('lightbox-modal')">
         <img id="lightbox-image" src="" alt="Imagem Ampliada" class="max-w-full max-h-full rounded-lg shadow-lg">
         <button class="absolute top-4 right-4 text-white text-3xl font-bold">&times;</button>
     </div>
 
-    <!-- MODAL PARA ADMIN (Ex: Adicionar/Editar Notícia) -->
-    <div id="admin-modal" class="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-[100] hidden">
-        <div id="admin-modal-content" class="bg-gray-800 rounded-lg p-8 w-full max-w-2xl shadow-xl">
-            <!-- Conteúdo do modal será injetado aqui -->
+    <!-- MODAL GENÉRICO (Admin, Detalhes do Produto) -->
+    <div id="generic-modal" class="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-[100] hidden">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div id="generic-modal-content" class="p-8 overflow-y-auto modal-body">
+                <!-- Conteúdo do modal será injetado aqui -->
+            </div>
         </div>
     </div>
 
@@ -126,8 +144,8 @@
             </video>
             <div class="absolute inset-0 bg-black opacity-60 z-10"></div>
             <div class="relative z-20 p-6">
-                <h1 class="text-4xl md:text-7xl font-black uppercase tracking-wider">Transformando Vidas<br>Através do Esporte</h1>
-                <p class="mt-4 text-lg md:text-xl max-w-2xl mx-auto">Mais que um time, uma família. O projeto Vôlei Futuro forma atletas e cidadãos dentro e fora das quadras.</p>
+                <h1 id="home-headline" class="text-4xl md:text-7xl font-black uppercase tracking-wider"></h1>
+                <p id="home-subheadline" class="mt-4 text-lg md:text-xl max-w-2xl mx-auto"></p>
                 <a href="#inscricao" class="mt-8 inline-block bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300 shadow-xl text-lg">Faça Parte do Time!</a>
             </div>
         </section>
@@ -140,12 +158,24 @@
                 </div>
             </div>
         </section>
+        <!-- Seção Parceiros -->
+        <section class="py-20 bg-gray-900">
+            <div class="container mx-auto px-6">
+                <h2 class="text-3xl md:text-4xl font-bold text-center mb-12">Nossos Parceiros</h2>
+                <div class="flex flex-wrap justify-center items-center gap-12">
+                    <img src="https://placehold.co/150x80/9CA3AF/FFFFFF?text=PARCEIRO+1" alt="Logo Parceiro 1" class="opacity-60 hover:opacity-100 transition duration-300">
+                    <img src="https://placehold.co/150x80/9CA3AF/FFFFFF?text=PARCEIRO+2" alt="Logo Parceiro 2" class="opacity-60 hover:opacity-100 transition duration-300">
+                    <img src="https://placehold.co/150x80/9CA3AF/FFFFFF?text=PARCEIRO+3" alt="Logo Parceiro 3" class="opacity-60 hover:opacity-100 transition duration-300">
+                    <img src="https://placehold.co/150x80/9CA3AF/FFFFFF?text=PARCEIRO+4" alt="Logo Parceiro 4" class="opacity-60 hover:opacity-100 transition duration-300">
+                </div>
+            </div>
+        </section>
         <!-- Seção CTA -->
         <section class="py-20 bg-red-700">
             <div class="container mx-auto px-6 text-center">
-                <h2 class="text-3xl md:text-4xl font-bold mb-4">Pronto para entrar em quadra?</h2>
-                <p class="text-red-200 text-lg mb-8 max-w-3xl mx-auto">O Vôlei Futuro está de portas abertas para novos atletas que sonham alto. Venha fazer parte da nossa história e desenvolver todo o seu potencial.</p>
-                <a href="#inscricao" class="bg-white text-red-700 font-bold py-3 px-8 rounded-lg hover:bg-gray-200 transition duration-300 shadow-xl text-lg">Quero me Inscrever</a>
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Apoie o Projeto Vôlei Futuro!</h2>
+                <p class="text-red-200 text-lg mb-8 max-w-3xl mx-auto">Sua contribuição ajuda a transformar vidas através do esporte, oferecendo oportunidades para dezenas de jovens atletas. Faça parte desta história!</p>
+                <a href="#inscricao" class="bg-white text-red-700 font-bold py-3 px-8 rounded-lg hover:bg-gray-200 transition duration-300 shadow-xl text-lg">Quero Doar (Simulação)</a>
             </div>
         </section>
     </template>
@@ -161,8 +191,7 @@
                 <div class="mt-16 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                     <div class="order-2 md:order-1">
                         <h2 class="text-3xl font-bold mb-4">Missão e Valores</h2>
-                        <p class="text-gray-300 mb-4">Nossa missão é usar o voleibol como ferramenta de transformação social, oferecendo treinamento de alta qualidade, educação e oportunidades de desenvolvimento pessoal para jovens. Acreditamos no poder do esporte para ensinar disciplina, trabalho em equipe, resiliência e respeito.</p>
-                        <p class="text-gray-300">Promovemos um ambiente seguro e inclusivo, onde cada atleta é incentivado a alcançar seu máximo potencial, tanto nas quadras quanto na vida.</p>
+                        <div id="about-mission-text" class="text-gray-300 space-y-4"></div>
                     </div>
                     <div class="order-1 md:order-2">
                          <img src="https://placehold.co/600x400/1F2937/FFFFFF?text=Nossa+Equipe" alt="Nossa Equipe" class="rounded-lg shadow-2xl">
@@ -195,6 +224,21 @@
         </div>
     </template>
 
+    <!-- TEMPLATE: CALENDÁRIO -->
+    <template id="template-calendario">
+        <div class="py-20">
+            <section class="container mx-auto px-6">
+                <div class="text-center">
+                    <h1 class="text-4xl md:text-5xl font-bold">Calendário de <span class="text-red-600">Jogos e Eventos</span></h1>
+                    <p class="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">Acompanhe nossa agenda e venha torcer por nossos atletas!</p>
+                </div>
+                <div id="calendar-container" class="max-w-4xl mx-auto mt-16 bg-gray-800 rounded-lg shadow-2xl p-6">
+                    <!-- Eventos do calendário serão injetados aqui -->
+                </div>
+            </section>
+        </div>
+    </template>
+
     <!-- TEMPLATE: GALERIA -->
     <template id="template-galeria">
        <div class="py-20">
@@ -204,13 +248,8 @@
                     <p class="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">Reviva os melhores momentos do Vôlei Futuro.</p>
                 </div>
                 <div class="mt-16">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group cursor-pointer" onclick="openModal('https://placehold.co/1200x800/1F2937/FFFFFF?text=Final+do+Campeonato')"><img src="https://placehold.co/600x400/1F2937/FFFFFF?text=Final+do+Campeonato" alt="Foto do Jogo" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"></div>
-                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group cursor-pointer" onclick="openModal('https://placehold.co/1200x800/1F2937/FFFFFF?text=Treino+Intensivo')"><img src="https://placehold.co/600x400/1F2937/FFFFFF?text=Treino+Intensivo" alt="Foto do Treino" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"></div>
-                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group cursor-pointer" onclick="openModal('https://placehold.co/1200x800/1F2937/FFFFFF?text=Confraternização')"><img src="https://placehold.co/600x400/1F2937/FFFFFF?text=Confraternização" alt="Foto do Evento" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"></div>
-                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group cursor-pointer" onclick="openModal('https://placehold.co/1200x800/1F2937/FFFFFF?text=Jogo+Amistoso')"><img src="https://placehold.co/600x400/1F2937/FFFFFF?text=Jogo+Amistoso" alt="Foto do Jogo Amistoso" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"></div>
-                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group cursor-pointer" onclick="openModal('https://placehold.co/1200x800/1F2937/FFFFFF?text=Equipe+Sub-17')"><img src="https://placehold.co/600x400/1F2937/FFFFFF?text=Equipe+Sub-17" alt="Foto da Equipe Sub-17" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"></div>
-                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group cursor-pointer" onclick="openModal('https://placehold.co/1200x800/1F2937/FFFFFF?text=Ação+Social')"><img src="https://placehold.co/600x400/1F2937/FFFFFF?text=Ação+Social" alt="Foto da Ação Social" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"></div>
+                    <div id="gallery-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <!-- Imagens da Galeria serão injetadas aqui -->
                     </div>
                 </div>
             </section>
@@ -277,12 +316,15 @@
                  <p class="text-center text-gray-400 mb-8">Faça login para gerenciar o site.</p>
                  <form id="login-form">
                      <div class="mb-4">
-                         <label for="username" class="block text-sm font-semibold mb-2 text-gray-300">Usuário</label>
-                         <input type="text" id="username" value="admin" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-red-500">
+                         <label for="email" class="block text-sm font-semibold mb-2 text-gray-300">Email</label>
+                         <input type="email" id="email" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-red-500" required>
                      </div>
                      <div class="mb-6">
                          <label for="password" class="block text-sm font-semibold mb-2 text-gray-300">Senha</label>
-                         <input type="password" id="password" value="1234" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-red-500">
+                         <input type="password" id="password" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-red-500" required>
+                     </div>
+                     <div class="text-right mb-6">
+                         <a href="#" onclick="openForgotPasswordModal(event)" class="text-sm text-red-500 hover:underline">Esqueceu a senha?</a>
                      </div>
                      <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition duration-300 shadow-lg">Entrar</button>
                  </form>
@@ -292,15 +334,19 @@
 
     <!-- TEMPLATE: ADMIN DASHBOARD -->
     <template id="template-admin">
-        <div class="flex flex-col md:flex-row">
+        <div class="flex flex-col md:flex-row min-h-screen">
             <!-- Sidebar (Admin) -->
             <aside class="w-full md:w-64 bg-gray-800 p-4">
                 <h2 class="text-xl font-bold mb-8 text-white">Painel de Controle</h2>
-                <nav class="flex flex-row md:flex-col md:space-y-2 space-x-2 md:space-x-0 overflow-x-auto">
-                    <a href="#admin" onclick="renderAdminSection('dashboard')" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg> Dashboard</a>
-                    <a href="#admin" onclick="renderAdminSection('noticias')" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 12h6m-1 8h.01"></path></svg> Notícias</a>
-                    <a href="#admin" onclick="renderAdminSection('inscricoes')" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a3.001 3.001 0 015.688 0M12 12a3 3 0 100-6 3 3 0 000 6z"></path></svg> Inscrições</a>
-                    <a href="#home" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg mt-0 md:mt-8 text-gray-400 hover:bg-gray-700"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg> Sair</a>
+                <nav id="admin-nav" class="flex flex-row md:flex-col md:space-y-2 space-x-2 md:space-x-0 overflow-x-auto">
+                    <a href="#admin" data-section="dashboard" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg hover:bg-gray-700"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg> Dashboard</a>
+                    <a href="#admin" data-section="paginas" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg hover:bg-gray-700"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg> Páginas</a>
+                    <a href="#admin" data-section="noticias" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg hover:bg-gray-700"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 12h6m-1 8h.01"></path></svg> Notícias</a>
+                    <a href="#admin" data-section="calendario" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg hover:bg-gray-700"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> Calendário</a>
+                    <a href="#admin" data-section="galeria" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg hover:bg-gray-700"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> Galeria</a>
+                    <a href="#admin" data-section="loja" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg hover:bg-gray-700"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg> Loja</a>
+                    <a href="#admin" data-section="inscricoes" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg hover:bg-gray-700"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a3.001 3.001 0 015.688 0M12 12a3 3 0 100-6 3 3 0 000 6z"></path></svg> Inscrições</a>
+                    <button id="logout-button" class="w-full admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg mt-0 md:mt-8 text-gray-400 hover:bg-gray-700 text-left"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg> Sair</button>
                 </nav>
             </aside>
             <!-- Conteúdo Principal (Admin) -->
@@ -310,39 +356,72 @@
         </div>
     </template>
     
-    <script>
+    <script type="module">
     // ===============================================================================
-    // BANCO DE DADOS (SIMULADO) E ESTADO DA APLICAÇÃO
+    // IMPORTS E INICIALIZAÇÃO DO FIREBASE
     // ===============================================================================
-    let db = {
-        products: [
-            { id: 1, name: 'Camisa Oficial 2025', price: 89.90, image: 'https://placehold.co/600x600/1F2937/FFFFFF?text=Camisa+Oficial' },
-            { id: 2, name: 'Boné Exclusivo', price: 49.90, image: 'https://placehold.co/600x600/1F2937/FFFFFF?text=Boné' },
-            { id: 3, name: 'Moletom Time', price: 149.90, image: 'https://placehold.co/600x600/1F2937/FFFFFF?text=Moletom' },
-            { id: 4, name: 'Garrafa de Atleta', price: 35.00, image: 'https://placehold.co/600x600/1F2937/FFFFFF?text=Garrafa' },
-        ],
-        news: [
-            { id: 1, date: '15 de Setembro, 2025', title: 'Vitória emocionante na final do campeonato regional!', content: 'Nossa equipe sub-19 conquistou o título em um jogo de 5 sets de tirar o fôlego.', image: 'https://placehold.co/600x400/1F2937/FFFFFF?text=Vitória' },
-            { id: 2, date: '10 de Setembro, 2025', title: 'Novas peneiras abertas para a temporada 2026', content: 'Estamos em busca de novos talentos para integrar nossas equipes de base.', image: 'https://placehold.co/600x400/1F2937/FFFFFF?text=Peneiras' },
-            { id: 3, date: '05 de Setembro, 2025', title: 'Lançamento da nossa loja virtual oficial!', content: 'Adquira a nova camisa do time e outros produtos exclusivos para apoiar o projeto.', image: 'https://placehold.co/600x400/1F2937/FFFFFF?text=Loja+Oficial' }
-        ],
-        registrations: [
-            { id: 1, name: 'João da Silva', birthDate: '2008-05-10', position: 'Ponteiro(a)', email: 'joao.silva@email.com', phone: '(11) 98765-4321' }
-        ]
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+    import { 
+        getAuth, 
+        onAuthStateChanged, 
+        signInWithEmailAndPassword,
+        sendPasswordResetEmail,
+        signOut 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { 
+        getFirestore, 
+        collection, 
+        doc, 
+        onSnapshot, 
+        addDoc,
+        setDoc,
+        updateDoc, 
+        deleteDoc
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyCDN1iJm_O3bms8M-RltpMSRttlED9YAJ8",
+        authDomain: "volei-futuro.firebaseapp.com",
+        projectId: "volei-futuro",
+        storageBucket: "volei-futuro.appspot.com",
+        messagingSenderId: "145355555073",
+        appId: "1:145355555073:web:12e32dce4fb081b1ca5b00",
+        measurementId: "G-Y1DNMKXEM2"
     };
 
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const analytics = getAnalytics(app);
+    const appId = firebaseConfig.projectId;
+
+    // ===============================================================================
+    // ESTADO DA APLICAÇÃO
+    // ===============================================================================
+    let appState = {
+        pageContent: { home: {}, about: {} },
+        calendarEvents: [],
+        products: [],
+        news: [],
+        registrations: [],
+        galleryImages: [],
+        currentUser: null,
+    };
+    
     let cart = [];
 
     // ===============================================================================
     // ELEMENTOS GLOBAIS
     // ===============================================================================
     const appRoot = document.getElementById('app-root');
-    const allNavLinks = document.querySelectorAll('.nav-link');
     const mobileMenuButton = document.getElementById('mobile-menu-button');
     const mobileMenu = document.getElementById('mobile-menu');
 
     // ===============================================================================
-    // FUNÇÕES DE RENDERIZAÇÃO DE PÁGINAS
+    // RENDERIZAÇÃO DE PÁGINAS (Leitura do appState)
     // ===============================================================================
     function renderPage(templateId) {
         const template = document.getElementById(templateId);
@@ -354,10 +433,13 @@
 
     function renderHomePage() {
         renderPage('template-home');
+        document.getElementById('home-headline').innerHTML = appState.pageContent.home.headline || "Carregando...";
+        document.getElementById('home-subheadline').innerHTML = appState.pageContent.home.subheadline || "";
+        
         const newsGrid = document.getElementById('home-news-grid');
         if (!newsGrid) return;
         newsGrid.innerHTML = '';
-        db.news.slice(0, 3).forEach(article => {
+        appState.news.slice(0, 3).forEach(article => {
             newsGrid.innerHTML += `
                 <div class="bg-gray-900 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-2 transition duration-300">
                     <img src="${article.image}" class="w-full h-48 object-cover">
@@ -371,12 +453,17 @@
         });
     }
 
+    function renderAboutPage() {
+        renderPage('template-sobre');
+        document.getElementById('about-mission-text').innerHTML = appState.pageContent.about.mission || "Carregando...";
+    }
+
     function renderNewsPage() {
         renderPage('template-noticias');
         const newsGrid = document.getElementById('all-news-grid');
         if (!newsGrid) return;
         newsGrid.innerHTML = '';
-        db.news.forEach(article => {
+        appState.news.forEach(article => {
              newsGrid.innerHTML += `
                 <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg">
                     <img src="${article.image}" class="w-full h-48 object-cover">
@@ -388,20 +475,64 @@
                 </div>`;
         });
     }
+
+    function renderCalendarPage() {
+        renderPage('template-calendario');
+        const container = document.getElementById('calendar-container');
+        if (!container) return;
+        
+        if (appState.calendarEvents.length === 0) {
+            container.innerHTML = '<p class="text-center text-gray-400">Nenhum evento agendado no momento.</p>';
+            return;
+        }
+
+        container.innerHTML = [...appState.calendarEvents]
+            .sort((a, b) => new Date(a.date) - new Date(b.date))
+            .map(event => {
+                const eventDate = new Date(event.date + 'T00:00:00-03:00');
+                const day = eventDate.toLocaleDateString('pt-BR', { day: '2-digit' });
+                const month = eventDate.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+                
+                return `
+                <div class="flex items-center border-b border-gray-700 py-4">
+                    <div class="text-center mr-6 flex-shrink-0">
+                        <p class="text-3xl font-bold text-red-500">${day}</p>
+                        <p class="text-sm uppercase text-gray-400">${month}</p>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-white">${event.event}</h3>
+                        <p class="text-gray-400">${event.location}</p>
+                    </div>
+                </div>
+            `}).join('');
+    }
     
+    function renderGalleryPage() {
+        renderPage('template-galeria');
+        const galleryGrid = document.getElementById('gallery-grid');
+        if (!galleryGrid) return;
+        galleryGrid.innerHTML = appState.galleryImages.map(img => `
+            <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group cursor-pointer" onclick="openModal('lightbox-modal', '${img.url}')">
+                <img src="${img.url.replace('1200x800', '600x400')}" alt="Foto da Galeria" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105">
+            </div>
+        `).join('') || '<p class="text-center text-gray-400 col-span-3">Nenhuma foto na galeria ainda.</p>';
+    }
+
     function renderShopPage() {
         renderPage('template-loja');
         const productsGrid = document.getElementById('products-grid');
         if(!productsGrid) return;
         productsGrid.innerHTML = '';
-        db.products.forEach(product => {
+        appState.products.forEach(product => {
             productsGrid.innerHTML += `
-                <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group">
-                    <img src="${product.image}" alt="${product.name}" class="w-full h-64 object-cover">
-                    <div class="p-6 text-center">
-                        <h3 class="text-xl font-bold mb-2">${product.name}</h3>
+                <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group flex flex-col">
+                    <div class="cursor-pointer" onclick="openProductDetailModal('${product.id}')">
+                        <img src="${product.image}" alt="${product.name}" class="w-full h-64 object-cover">
+                    </div>
+                    <div class="p-6 text-center flex-grow flex flex-col">
+                        <h3 class="text-xl font-bold mb-2 flex-grow">${product.name}</h3>
                         <p class="text-2xl font-semibold text-red-500 mb-4">R$ ${product.price.toFixed(2).replace('.', ',')}</p>
-                        <button onclick="addToCart(${product.id})" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Adicionar ao Carrinho</button>
+                        <button onclick="addToCart('${product.id}')" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Adicionar ao Carrinho</button>
                     </div>
                 </div>`;
         });
@@ -412,52 +543,85 @@
         updateCartDisplay();
     }
     
-    function renderInscriptionPage() {
-        renderPage('template-inscricao');
-        const form = document.getElementById('inscription-form');
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const formData = new FormData(form);
-            const newRegistration = {
-                id: Date.now(),
-                name: formData.get('fullName'),
-                birthDate: formData.get('birthDate'),
-                position: formData.get('position'),
-                email: formData.get('email'),
-                phone: formData.get('phone'),
-            };
-            db.registrations.unshift(newRegistration);
+    async function handleInscriptionSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+        const newRegistration = {
+            name: formData.get('fullName'),
+            birthDate: formData.get('birthDate'),
+            position: formData.get('position'),
+            email: formData.get('email'),
+            phone: formData.get('phone'),
+            createdAt: new Date(),
+        };
+        try {
+            const collectionRef = collection(db, `artifacts/${appId}/public/data/registrations`);
+            await addDoc(collectionRef, newRegistration);
             alert('Inscrição enviada com sucesso!');
             form.reset();
-        });
+        } catch (error) {
+            console.error("Erro ao enviar inscrição: ", error);
+            alert('Houve um erro ao enviar sua inscrição. Tente novamente.');
+        }
+    }
+    
+    function renderInscriptionPage() {
+        renderPage('template-inscricao');
+        document.getElementById('inscription-form').addEventListener('submit', handleInscriptionSubmit);
+    }
+    
+    async function handleLoginSubmit(e) {
+        e.preventDefault();
+        const email = e.target.email.value;
+        const password = e.target.password.value;
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            navigateTo('admin');
+        } catch (error) {
+            console.error("Erro de login: ", error.code);
+            alert('Email ou senha inválidos.');
+        }
     }
 
     function renderLoginPage() {
         renderPage('template-login');
-        const form = document.getElementById('login-form');
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            // Simulação de login
-            navigateTo('admin');
-        });
+        document.getElementById('login-form').addEventListener('submit', handleLoginSubmit);
     }
     
     function renderAdminPage() {
+        if (!appState.currentUser) {
+            navigateTo('login');
+            return;
+        }
         renderPage('template-admin');
+        const adminNav = document.getElementById('admin-nav');
+        adminNav.addEventListener('click', (e) => {
+            const link = e.target.closest('.admin-nav-link');
+            if (link && link.dataset.section) {
+                e.preventDefault();
+                renderAdminSection(link.dataset.section);
+            }
+        });
+        document.getElementById('logout-button').addEventListener('click', async () => {
+            await signOut(auth);
+            navigateTo('home');
+        });
         renderAdminSection('dashboard');
     }
 
     // ===============================================================================
-    // LÓGICA DO CARRINHO
+    // LÓGICA DO CARRINHO (Frontend-only)
     // ===============================================================================
-    function addToCart(productId) {
-        const product = db.products.find(p => p.id === productId);
+    function addToCart(productId, quantity = 1) {
+        const product = appState.products.find(p => p.id === productId);
+        if (!product) return;
         const cartItem = cart.find(item => item.id === productId);
 
         if (cartItem) {
-            cartItem.quantity++;
+            cartItem.quantity += quantity;
         } else {
-            cart.push({ ...product, quantity: 1 });
+            cart.push({ ...product, quantity: quantity });
         }
         updateCartBadge();
         alert(`${product.name} foi adicionado ao carrinho!`);
@@ -494,12 +658,12 @@
                 </div>
                 <div class="flex items-center gap-4 w-full sm:w-auto justify-end">
                     <div class="flex items-center border border-gray-600 rounded">
-                        <button onclick="updateCartQuantity(${item.id}, -1)" class="px-3 py-1">-</button>
+                        <button onclick="updateCartQuantity('${item.id}', -1)" class="px-3 py-1">-</button>
                         <span class="px-4">${item.quantity}</span>
-                        <button onclick="updateCartQuantity(${item.id}, 1)" class="px-3 py-1">+</button>
+                        <button onclick="updateCartQuantity('${item.id}', 1)" class="px-3 py-1">+</button>
                     </div>
                     <p class="font-bold w-24 text-right">R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}</p>
-                    <button onclick="removeFromCart(${item.id})" class="text-gray-400 hover:text-red-500 text-2xl">&times;</button>
+                    <button onclick="removeFromCart('${item.id}')" class="text-gray-400 hover:text-red-500 text-2xl">&times;</button>
                 </div>
             </div>`).join('');
         
@@ -529,168 +693,330 @@
     }
 
     // ===============================================================================
-    // LÓGICA DO PAINEL ADMIN
+    // ADMIN MODALS E LÓGICA DE DADOS (Firestore)
     // ===============================================================================
     const adminContentArea = () => document.getElementById('admin-content-area');
 
     function renderAdminSection(section) {
         document.querySelectorAll('.admin-nav-link').forEach(link => link.classList.remove('bg-red-600', 'text-white'));
-        document.querySelector(`.admin-nav-link[onclick="renderAdminSection('${section}')"]`).classList.add('bg-red-600', 'text-white');
-
-        if (section === 'dashboard') renderAdminDashboard();
-        if (section === 'noticias') renderAdminNews();
-        if (section === 'inscricoes') renderAdminRegistrations();
+        document.querySelector(`.admin-nav-link[data-section="${section}"]`).classList.add('bg-red-600', 'text-white');
+        const renderers = {
+            'dashboard': renderAdminDashboard, 'paginas': renderAdminPages, 'noticias': renderAdminNews,
+            'calendario': renderAdminCalendar, 'galeria': renderAdminGallery, 'loja': renderAdminShop,
+            'inscricoes': renderAdminRegistrations,
+        };
+        if(renderers[section]) renderers[section]();
     }
     
     function renderAdminDashboard() {
         const contentArea = adminContentArea();
-        if (!contentArea) return;
-        contentArea.innerHTML = `
+        if (contentArea) contentArea.innerHTML = `
             <h1 class="text-3xl font-bold mb-8">Dashboard</h1>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-gray-800 p-6 rounded-lg shadow-lg"><h3 class="text-gray-400 text-sm font-bold">NOVAS INSCRIÇÕES</h3><p class="text-3xl font-black text-red-600">${db.registrations.length}</p></div>
-                <div class="bg-gray-800 p-6 rounded-lg shadow-lg"><h3 class="text-gray-400 text-sm font-bold">NOTÍCIAS PUBLICADAS</h3><p class="text-3xl font-black">${db.news.length}</p></div>
-                <div class="bg-gray-800 p-6 rounded-lg shadow-lg"><h3 class="text-gray-400 text-sm font-bold">PRODUTOS NA LOJA</h3><p class="text-3xl font-black">${db.products.length}</p></div>
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg"><h3 class="text-gray-400 text-sm font-bold">EVENTOS AGENDADOS</h3><p class="text-3xl font-black text-red-600">${appState.calendarEvents.length}</p></div>
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg"><h3 class="text-gray-400 text-sm font-bold">NOTÍCIAS PUBLICADAS</h3><p class="text-3xl font-black">${appState.news.length}</p></div>
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg"><h3 class="text-gray-400 text-sm font-bold">NOVAS INSCRIÇÕES</h3><p class="text-3xl font-black">${appState.registrations.length}</p></div>
             </div>`;
+    }
+
+    function renderAdminPages() {
+        const contentArea = adminContentArea();
+        if(!contentArea) return;
+        contentArea.innerHTML = `
+            <h2 class="text-2xl font-bold mb-8">Gerenciar Páginas</h2>
+            <div class="space-y-8">
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-4">Página Home</h3>
+                    <form id="home-page-form">
+                        <div class="mb-4"><label class="block mb-2">Título Principal</label><textarea name="headline" rows="2" class="w-full bg-gray-700 p-2 rounded">${(appState.pageContent.home.headline || '').replace(/<br>/g, "\n")}</textarea></div>
+                        <div class="mb-4"><label class="block mb-2">Subtítulo</label><textarea name="subheadline" rows="3" class="w-full bg-gray-700 p-2 rounded">${appState.pageContent.home.subheadline || ''}</textarea></div>
+                        <div class="text-right"><button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Salvar Home</button></div>
+                    </form>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-4">Página Sobre</h3>
+                    <form id="about-page-form">
+                        <div class="mb-4"><label class="block mb-2">Texto de Missão e Valores</label><textarea name="mission" rows="6" class="w-full bg-gray-700 p-2 rounded">${(appState.pageContent.about.mission || '').replace(/<p class="mb-4">/g, "").replace(/<\/p>/g, "\n\n").trim()}</textarea></div>
+                        <div class="text-right"><button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Salvar Sobre</button></div>
+                    </form>
+                </div>
+            </div>`;
+        document.getElementById('home-page-form').addEventListener('submit', saveHomePageContent);
+        document.getElementById('about-page-form').addEventListener('submit', saveAboutPageContent);
     }
 
     function renderAdminNews() {
         const contentArea = adminContentArea();
-        if (!contentArea) return;
-        contentArea.innerHTML = `
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold">Gerenciar Notícias</h2>
-                <button onclick="openNewsModal()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Nova Postagem</button>
-            </div>
-            <div class="bg-gray-800 rounded-lg overflow-x-auto">
-                <table class="w-full text-left min-w-max">
-                    <thead class="bg-gray-700"><tr><th class="p-4">Título</th><th class="p-4">Data</th><th class="p-4">Ações</th></tr></thead>
-                    <tbody>
-                        ${db.news.map(article => `
-                            <tr class="border-b border-gray-700">
-                                <td class="p-4">${article.title}</td><td class="p-4">${article.date}</td>
-                                <td class="p-4 whitespace-nowrap">
-                                    <button onclick="openNewsModal(${article.id})" class="text-green-400 mr-4">Editar</button>
-                                    <button onclick="deleteNews(${article.id})" class="text-red-500">Excluir</button>
-                                </td>
-                            </tr>`).join('') || '<tr><td colspan="3" class="p-4 text-center text-gray-400">Nenhuma notícia encontrada.</td></tr>'}
-                    </tbody>
-                </table>
-            </div>`;
+        if (contentArea) contentArea.innerHTML = `
+            <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-bold">Gerenciar Notícias</h2><button onclick="openNewsModal()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Nova Postagem</button></div>
+            <div class="bg-gray-800 rounded-lg overflow-x-auto"><table class="w-full text-left min-w-max">
+                <thead class="bg-gray-700"><tr><th class="p-4">Título</th><th class="p-4">Data</th><th class="p-4">Ações</th></tr></thead>
+                <tbody>
+                    ${appState.news.map(article => `<tr class="border-b border-gray-700">
+                        <td class="p-4">${article.title}</td><td class="p-4">${article.date}</td>
+                        <td class="p-4 whitespace-nowrap"><button onclick="openNewsModal('${article.id}')" class="text-green-400 hover:text-green-300 mr-4">Editar</button><button onclick="deleteNews('${article.id}')" class="text-red-500 hover:text-red-400">Excluir</button></td>
+                    </tr>`).join('') || '<tr><td colspan="3" class="p-4 text-center text-gray-400">Nenhuma notícia encontrada.</td></tr>'}
+                </tbody></table></div>`;
+    }
+
+    function renderAdminCalendar() {
+        const contentArea = adminContentArea();
+        if (contentArea) contentArea.innerHTML = `
+            <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-bold">Gerenciar Calendário</h2><button onclick="openCalendarEventModal()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Novo Evento</button></div>
+            <div class="bg-gray-800 rounded-lg overflow-x-auto"><table class="w-full text-left min-w-max">
+                <thead class="bg-gray-700"><tr><th class="p-4">Data</th><th class="p-4">Evento</th><th class="p-4">Local</th><th class="p-4">Ações</th></tr></thead>
+                <tbody>
+                    ${[...appState.calendarEvents].sort((a,b) => new Date(a.date) - new Date(b.date)).map(event => `<tr class="border-b border-gray-700">
+                        <td class="p-4">${new Date(event.date + 'T00:00:00-03:00').toLocaleDateString('pt-BR')}</td><td class="p-4">${event.event}</td><td class="p-4">${event.location}</td>
+                        <td class="p-4 whitespace-nowrap"><button onclick="openCalendarEventModal('${event.id}')" class="text-green-400 hover:text-green-300 mr-4">Editar</button><button onclick="deleteCalendarEvent('${event.id}')" class="text-red-500 hover:text-red-400">Excluir</button></td>
+                    </tr>`).join('') || '<tr><td colspan="4" class="p-4 text-center text-gray-400">Nenhum evento encontrado.</td></tr>'}
+                </tbody></table></div>`;
     }
     
+    function renderAdminGallery() {
+        const contentArea = adminContentArea();
+        if (contentArea) contentArea.innerHTML = `
+            <h2 class="text-2xl font-bold mb-4">Gerenciar Galeria</h2>
+            <form id="gallery-form" class="mb-8 bg-gray-800 p-4 rounded-lg flex gap-4 items-end"><div class="flex-grow">
+                <label for="imageUrl" class="block text-sm font-semibold mb-2 text-gray-300">URL da Nova Imagem</label>
+                <input type="url" id="imageUrl" name="imageUrl" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" placeholder="https://exemplo.com/imagem.jpg" required>
+                <small class="text-gray-400 mt-1 block">Em um site real, aqui seria um botão de upload de arquivo.</small></div>
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Adicionar Foto</button></form>
+            <div class="bg-gray-800 rounded-lg overflow-x-auto"><table class="w-full text-left min-w-max">
+                <thead class="bg-gray-700"><tr><th class="p-4">Imagem</th><th class="p-4">Ações</th></tr></thead>
+                <tbody>
+                    ${appState.galleryImages.map(img => `<tr class="border-b border-gray-700">
+                        <td class="p-4"><img src="${img.url.replace('1200x800', '600x400')}" class="h-16 w-24 object-cover rounded"></td>
+                        <td class="p-4"><button onclick="deleteGalleryImage('${img.id}')" class="text-red-500 hover:text-red-400">Excluir</button></td>
+                    </tr>`).join('') || '<tr><td colspan="2" class="p-4 text-center text-gray-400">Nenhuma foto na galeria.</td></tr>'}
+                </tbody></table></div>`;
+        document.getElementById('gallery-form').addEventListener('submit', addGalleryImage);
+    }
+    
+    function renderAdminShop() {
+        const contentArea = adminContentArea();
+        if (contentArea) contentArea.innerHTML = `
+            <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-bold">Gerenciar Loja</h2><button onclick="openProductModal()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Novo Produto</button></div>
+            <div class="bg-gray-800 rounded-lg overflow-x-auto"><table class="w-full text-left min-w-max">
+                <thead class="bg-gray-700"><tr><th class="p-4">Produto</th><th class="p-4">Preço</th><th class="p-4">Ações</th></tr></thead>
+                <tbody>
+                    ${appState.products.map(product => `<tr class="border-b border-gray-700">
+                        <td class="p-4 flex items-center"><img src="${product.image}" class="h-12 w-12 object-cover rounded mr-4"> ${product.name}</td>
+                        <td class="p-4">R$ ${product.price.toFixed(2).replace('.', ',')}</td>
+                        <td class="p-4 whitespace-nowrap"><button onclick="openProductModal('${product.id}')" class="text-green-400 hover:text-green-300 mr-4">Editar</button><button onclick="deleteProduct('${product.id}')" class="text-red-500 hover:text-red-400">Excluir</button></td>
+                    </tr>`).join('') || '<tr><td colspan="3" class="p-4 text-center text-gray-400">Nenhum produto encontrado.</td></tr>'}
+                </tbody></table></div>`;
+    }
+
     function renderAdminRegistrations() {
         const contentArea = adminContentArea();
-        if (!contentArea) return;
-        contentArea.innerHTML = `
+        if (contentArea) contentArea.innerHTML = `
             <h2 class="text-2xl font-bold mb-4">Inscrições Recebidas</h2>
-            <div class="bg-gray-800 rounded-lg overflow-x-auto">
-                 <table class="w-full text-left min-w-max">
-                    <thead class="bg-gray-700"><tr><th class="p-4">Nome</th><th class="p-4">Nascimento</th><th class="p-4">Posição</th><th class="p-4">Contato</th></tr></thead>
-                    <tbody>
-                        ${db.registrations.map(reg => `
-                             <tr class="border-b border-gray-700">
-                                <td class="p-4">${reg.name}</td>
-                                <td class="p-4">${reg.birthDate}</td>
-                                <td class="p-4">${reg.position}</td>
-                                <td class="p-4">${reg.email}</td>
-                             </tr>`).join('') || '<tr><td colspan="4" class="p-4 text-center text-gray-400">Nenhuma inscrição encontrada.</td></tr>'}
-                    </tbody>
-                </table>
-            </div>`;
+            <div class="bg-gray-800 rounded-lg overflow-x-auto"><table class="w-full text-left min-w-max">
+                <thead class="bg-gray-700"><tr><th class="p-4">Nome</th><th class="p-4">Nascimento</th><th class="p-4">Posição</th><th class="p-4">Contato</th></tr></thead>
+                <tbody>
+                    ${[...appState.registrations].sort((a,b) => b.createdAt.toDate() - a.createdAt.toDate()).map(reg => `<tr class="border-b border-gray-700">
+                        <td class="p-4">${reg.name}</td><td class="p-4">${reg.birthDate}</td>
+                        <td class="p-4">${reg.position}</td><td class="p-4">${reg.email}</td>
+                    </tr>`).join('') || '<tr><td colspan="4" class="p-4 text-center text-gray-400">Nenhuma inscrição encontrada.</td></tr>'}
+                </tbody></table></div>`;
+    }
+    
+    function openProductDetailModal(id) {
+        const product = appState.products.find(p => p.id === id);
+        if (product) openModal('generic-modal', null, `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div><img src="${product.image}" alt="${product.name}" class="w-full h-auto object-cover rounded-lg"></div>
+                <div><h2 class="text-3xl font-bold mb-2">${product.name}</h2><p class="text-3xl font-semibold text-red-500 mb-4">R$ ${product.price.toFixed(2).replace('.', ',')}</p><p class="text-gray-300 mb-6">${product.description}</p>
+                <button onclick="addToCart('${product.id}'); closeModal('generic-modal');" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300">Adicionar ao Carrinho</button></div>
+            </div><button onclick="closeModal('generic-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl">&times;</button>`);
     }
 
     function openNewsModal(id = null) {
-        const article = id ? db.news.find(a => a.id === id) : null;
-        const modalContent = document.getElementById('admin-modal-content');
-        modalContent.innerHTML = `
-            <h2 class="text-2xl font-bold mb-6">${id ? 'Editar' : 'Nova'} Notícia</h2>
-            <form id="news-form">
-                <input type="hidden" name="id" value="${id || ''}">
+        const article = id ? appState.news.find(a => a.id === id) : null;
+        openModal('generic-modal', null, `
+            <h2 class="text-2xl font-bold mb-6">${id ? 'Editar' : 'Nova'} Notícia</h2><form id="news-form"><input type="hidden" name="id" value="${id || ''}">
                 <div class="mb-4"><label class="block mb-2">Título</label><input type="text" name="title" class="w-full bg-gray-700 p-2 rounded" value="${article?.title || ''}" required></div>
                 <div class="mb-4"><label class="block mb-2">Conteúdo</label><textarea name="content" rows="4" class="w-full bg-gray-700 p-2 rounded" required>${article?.content || ''}</textarea></div>
-                <div class="mb-6"><label class="block mb-2">URL da Imagem</label><input type="text" name="image" class="w-full bg-gray-700 p-2 rounded" value="${article?.image || 'https://placehold.co/600x400/1F2937/FFFFFF?text=Nova+Notícia'}" required></div>
-                <div class="flex justify-end gap-4">
-                    <button type="button" onclick="closeAdminModal()" class="bg-gray-600 hover:bg-gray-700 py-2 px-4 rounded">Cancelar</button>
-                    <button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Salvar</button>
-                </div>
-            </form>`;
-        document.getElementById('admin-modal').classList.remove('hidden');
+                <div class="mb-6"><label class="block mb-2">URL da Imagem</label><input type="text" name="image" class="w-full bg-gray-700 p-2 rounded" value="${article?.image || 'https://placehold.co/600x400/1F2937/FFFFFF?text=Nova+Notícia'}" required>
+                <small class="text-gray-400 mt-1 block">Em um site real, aqui seria um botão de upload de arquivo.</small></div>
+                <div class="flex justify-end gap-4"><button type="button" onclick="closeModal('generic-modal')" class="bg-gray-600 hover:bg-gray-700 py-2 px-4 rounded">Cancelar</button><button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Salvar</button></div>
+            </form>`);
         document.getElementById('news-form').addEventListener('submit', saveNews);
     }
+
+    function openProductModal(id = null) {
+        const product = id ? appState.products.find(p => p.id === id) : null;
+        openModal('generic-modal', null, `
+             <h2 class="text-2xl font-bold mb-6">${id ? 'Editar' : 'Novo'} Produto</h2><form id="product-form"><input type="hidden" name="id" value="${id || ''}">
+                <div class="mb-4"><label class="block mb-2">Nome do Produto</label><input type="text" name="name" class="w-full bg-gray-700 p-2 rounded" value="${product?.name || ''}" required></div>
+                <div class="mb-4"><label class="block mb-2">Preço (ex: 89.90)</label><input type="number" step="0.01" name="price" class="w-full bg-gray-700 p-2 rounded" value="${product?.price || ''}" required></div>
+                <div class="mb-4"><label class="block mb-2">Descrição</label><textarea name="description" rows="4" class="w-full bg-gray-700 p-2 rounded" required>${product?.description || ''}</textarea></div>
+                <div class="mb-6"><label class="block mb-2">URL da Imagem</label><input type="text" name="image" class="w-full bg-gray-700 p-2 rounded" value="${product?.image || 'https://placehold.co/600x600/1F2937/FFFFFF?text=Novo+Produto'}" required>
+                <small class="text-gray-400 mt-1 block">Em um site real, aqui seria um botão de upload de arquivo.</small></div>
+                <div class="flex justify-end gap-4"><button type="button" onclick="closeModal('generic-modal')" class="bg-gray-600 hover:bg-gray-700 py-2 px-4 rounded">Cancelar</button><button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Salvar</button></div>
+             </form>`);
+        document.getElementById('product-form').addEventListener('submit', saveProduct);
+    }
     
-    function closeAdminModal() {
-        document.getElementById('admin-modal').classList.add('hidden');
+    function openCalendarEventModal(id = null) {
+        const event = id ? appState.calendarEvents.find(e => e.id === id) : null;
+        openModal('generic-modal', null, `
+            <h2 class="text-2xl font-bold mb-6">${id ? 'Editar' : 'Novo'} Evento</h2><form id="calendar-event-form"><input type="hidden" name="id" value="${id || ''}">
+                <div class="mb-4"><label class="block mb-2">Data</label><input type="date" name="date" class="w-full bg-gray-700 p-2 rounded" value="${event?.date || ''}" required></div>
+                <div class="mb-4"><label class="block mb-2">Nome do Evento</label><input type="text" name="event" class="w-full bg-gray-700 p-2 rounded" value="${event?.event || ''}" required></div>
+                <div class="mb-6"><label class="block mb-2">Local</label><input type="text" name="location" class="w-full bg-gray-700 p-2 rounded" value="${event?.location || ''}" required></div>
+                <div class="flex justify-end gap-4"><button type="button" onclick="closeModal('generic-modal')" class="bg-gray-600 hover:bg-gray-700 py-2 px-4 rounded">Cancelar</button><button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Salvar</button></div>
+            </form>`);
+        document.getElementById('calendar-event-form').addEventListener('submit', saveCalendarEvent);
     }
 
-    function saveNews(e) {
+    function openForgotPasswordModal(e) {
         e.preventDefault();
-        const form = e.target;
-        const formData = new FormData(form);
-        const id = parseInt(formData.get('id'));
-        const articleData = {
-            title: formData.get('title'),
-            content: formData.get('content'),
-            image: formData.get('image'),
-            date: new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric'})
-        };
-
-        if (id) {
-            const index = db.news.findIndex(a => a.id === id);
-            db.news[index] = { ...db.news[index], ...articleData };
-        } else {
-            db.news.unshift({ id: Date.now(), ...articleData });
-        }
-        closeAdminModal();
-        renderAdminNews();
+        openModal('generic-modal', null, `
+            <h2 class="text-2xl font-bold mb-6">Redefinir Senha</h2><form id="forgot-password-form">
+                <p class="text-gray-400 mb-4">Digite seu e-mail para enviarmos um link de redefinição de senha.</p>
+                <div class="mb-6"><label class="block mb-2">E-mail</label><input type="email" name="email" class="w-full bg-gray-700 p-2 rounded" placeholder="seuemail@exemplo.com" required></div>
+                <div class="flex justify-end gap-4"><button type="button" onclick="closeModal('generic-modal')" class="bg-gray-600 hover:bg-gray-700 py-2 px-4 rounded">Cancelar</button><button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Enviar Link</button></div>
+            </form>`);
+        document.getElementById('forgot-password-form').addEventListener('submit', handleForgotPassword);
     }
     
-    function deleteNews(id) {
-        if (confirm('Tem certeza que deseja excluir esta notícia?')) {
-            db.news = db.news.filter(a => a.id !== id);
-            renderAdminNews();
+    // ===============================================================================
+    // LÓGICA DE ESCRITA NO FIRESTORE
+    // ===============================================================================
+    const getCollectionRef = (name) => collection(db, `artifacts/${appId}/public/data/${name}`);
+    const getDocRef = (col, id) => doc(db, `artifacts/${appId}/public/data/${col}`, id);
+
+    async function handleForgotPassword(e) {
+        e.preventDefault();
+        const email = e.target.email.value;
+        try {
+            await sendPasswordResetEmail(auth, email);
+            alert('Um link de redefinição de senha foi enviado para o seu e-mail.');
+        } catch (error) {
+            console.error("Erro ao enviar email de redefinição: ", error);
+            alert('Houve um erro. Verifique o e-mail digitado.');
+        } finally {
+            closeModal('generic-modal');
         }
     }
+
+    async function saveHomePageContent(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const content = {
+            headline: formData.get('headline').replace(/\n/g, "<br>"),
+            subheadline: formData.get('subheadline'),
+        };
+        await setDoc(doc(db, `artifacts/${appId}/public/data/pages/home`), content);
+        alert('Página Home atualizada com sucesso!');
+    }
+
+    async function saveAboutPageContent(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const missionText = formData.get('mission');
+        const content = {
+            mission: missionText.split('\n\n').map(p => `<p class="${p === missionText.split('\n\n').slice(-1)[0] ? '' : 'mb-4'}">${p}</p>`).join('')
+        };
+        await setDoc(doc(db, `artifacts/${appId}/public/data/pages/about`), content);
+        alert('Página Sobre atualizada com sucesso!');
+    }
+    
+    async function saveNews(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const id = formData.get('id');
+        const articleData = {
+            title: formData.get('title'), content: formData.get('content'), image: formData.get('image'),
+            date: new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
+        };
+        if (id) await updateDoc(getDocRef('news', id), articleData);
+        else await addDoc(getCollectionRef('news'), articleData);
+        closeModal('generic-modal');
+    }
+    
+    async function deleteNews(id) {
+        if (confirm('Tem certeza?')) await deleteDoc(getDocRef('news', id));
+    }
+
+    async function saveCalendarEvent(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const id = formData.get('id');
+        const eventData = { date: formData.get('date'), event: formData.get('event'), location: formData.get('location') };
+        if (id) await updateDoc(getDocRef('calendarEvents', id), eventData);
+        else await addDoc(getCollectionRef('calendarEvents'), eventData);
+        closeModal('generic-modal');
+    }
+
+    async function deleteCalendarEvent(id) {
+         if (confirm('Tem certeza?')) await deleteDoc(getDocRef('calendarEvents', id));
+    }
+    
+    async function addGalleryImage(e) {
+        e.preventDefault();
+        const imageUrl = e.target.imageUrl.value;
+        if (imageUrl) {
+            await addDoc(getCollectionRef('galleryImages'), { url: imageUrl, createdAt: new Date() });
+            e.target.reset();
+        }
+    }
+    
+    async function deleteGalleryImage(id) {
+        if (confirm('Tem certeza?')) await deleteDoc(getDocRef('galleryImages', id));
+    }
+    
+    async function saveProduct(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const id = formData.get('id');
+        const productData = {
+            name: formData.get('name'), price: parseFloat(formData.get('price')),
+            image: formData.get('image'), description: formData.get('description'),
+        };
+        if (id) await updateDoc(getDocRef('products', id), productData);
+        else await addDoc(getCollectionRef('products'), productData);
+        closeModal('generic-modal');
+    }
+
+    async function deleteProduct(id) {
+        if (confirm('Tem certeza?')) await deleteDoc(getDocRef('products', id));
+    }
+
 
     // ===============================================================================
     // ROTEAMENTO E NAVEGAÇÃO
     // ===============================================================================
     const pageRenderers = {
-        'home': renderHomePage, 'sobre': () => renderPage('template-sobre'),
-        'noticias': renderNewsPage, 'galeria': () => renderPage('template-galeria'),
-        'loja': renderShopPage, 'carrinho': renderCartPage,
-        'inscricao': renderInscriptionPage, 'login': renderLoginPage,
+        'home': renderHomePage, 'sobre': renderAboutPage, 'noticias': renderNewsPage, 
+        'calendario': renderCalendarPage, 'galeria': renderGalleryPage, 'loja': renderShopPage, 
+        'carrinho': renderCartPage, 'inscricao': renderInscriptionPage, 'login': renderLoginPage,
         'admin': renderAdminPage
     };
     
     function navigateTo(pageId) {
         const header = document.querySelector('header');
         const footer = document.querySelector('footer');
-        header.style.display = pageId === 'admin' ? 'none' : '';
-        footer.style.display = pageId === 'admin' ? 'none' : '';
-
-        const renderFunction = pageRenderers[pageId];
+        const isAdminPage = pageId.startsWith('admin');
+        header.style.display = isAdminPage ? 'none' : '';
+        footer.style.display = isAdminPage ? 'none' : '';
+        const basePageId = isAdminPage ? 'admin' : pageId;
+        const renderFunction = pageRenderers[basePageId];
         if (renderFunction) {
             appRoot.style.opacity = 0;
             setTimeout(() => {
-                renderFunction();
-                appRoot.style.opacity = 1;
-                window.scrollTo(0, 0);
-                if (window.location.hash !== `#${pageId}`) {
-                    history.pushState({pageId}, '', `#${pageId}`);
-                }
+                renderFunction(); appRoot.style.opacity = 1; window.scrollTo(0, 0);
+                if (window.location.hash !== `#${pageId}`) history.pushState({pageId}, '', `#${pageId}`);
                 updateActiveLink(pageId);
             }, 200);
         }
     }
 
     function updateActiveLink(activePageId) {
-        allNavLinks.forEach(link => {
-            if (link.getAttribute('href') === `#${activePageId}`) {
-                link.classList.add('active');
-            } else {
-                link.classList.remove('active');
-            }
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.toggle('active', link.getAttribute('href') === `#${activePageId}`);
         });
     }
 
@@ -698,59 +1024,98 @@
         mobileMenu.classList.add('hidden');
     }
     
-    mobileMenuButton.addEventListener('click', () => {
-        mobileMenu.classList.toggle('hidden');
-    });
+    mobileMenuButton.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
     
-    // Handler de navegação global
     document.addEventListener('click', e => {
         const link = e.target.closest('a[href^="#"]');
-        if (link) {
+        if (link && !link.closest('#admin-nav')) {
             e.preventDefault();
             const pageId = link.getAttribute('href').substring(1);
-            
-            // Lógica para fechar menu mobile
-            if (link.closest('#mobile-menu')) {
-                closeMobileMenu();
-            }
-            // Navega para a página
-            if(pageId){
-                 navigateTo(pageId);
-            }
+            if (link.closest('#mobile-menu')) closeMobileMenu();
+            if (pageId) navigateTo(pageId);
         }
     });
 
     // ===============================================================================
     // INICIALIZAÇÃO E EVENTOS GLOBAIS
     // ===============================================================================
-    const modal = document.getElementById('lightbox-modal');
-    const modalImage = document.getElementById('lightbox-image');
-
-    function openModal(imageSrc) {
-        if (modal && modalImage) {
-            modalImage.src = imageSrc;
+    function openModal(modalId, imageSrc = null, contentHTML = null) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            if (modalId === 'lightbox-modal' && imageSrc) {
+                document.getElementById('lightbox-image').src = imageSrc;
+            }
+            if (modalId === 'generic-modal' && contentHTML) {
+                document.getElementById('generic-modal-content').innerHTML = contentHTML;
+            }
             modal.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
         }
     }
 
-    function closeModal() {
+    window.openModal = openModal; // Expor globalmente para onclicks
+
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.add('hidden');
             document.body.style.overflow = 'auto';
         }
     }
+    window.closeModal = closeModal; // Expor globalmente para onclicks
     
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
-            closeModal();
+        if (event.key === 'Escape') {
+            closeModal('lightbox-modal');
+            closeModal('generic-modal');
         }
     });
     
+    function setupRealtimeListeners() {
+        const collections = ['calendarEvents', 'products', 'news', 'registrations', 'galleryImages'];
+        collections.forEach(col => {
+            onSnapshot(getCollectionRef(col), snapshot => {
+                appState[col] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const currentPage = window.location.hash.substring(1) || 'home';
+                if (pageRenderers[currentPage]) {
+                   const currentContent = appRoot.innerHTML;
+                   if (currentContent) {
+                       pageRenderers[currentPage]();
+                   }
+                }
+            }, error => console.error(`Erro no listener da coleção ${col}: `, error));
+        });
+        
+        onSnapshot(doc(db, `artifacts/${appId}/public/data/pages/home`), doc => {
+            appState.pageContent.home = doc.data() || {};
+             const currentPage = window.location.hash.substring(1) || 'home';
+             if(currentPage === 'home') renderHomePage();
+        }, error => console.error("Erro no listener da página home: ", error));
+        onSnapshot(doc(db, `artifacts/${appId}/public/data/pages/about`), doc => {
+            appState.pageContent.about = doc.data() || {};
+            const currentPage = window.location.hash.substring(1) || 'home';
+            if(currentPage === 'sobre') renderAboutPage();
+        }, error => console.error("Erro no listener da página about: ", error));
+    }
+
     function handleInitialPageLoad() {
         updateCartBadge();
-        const initialPage = window.location.hash.substring(1) || 'home';
-        navigateTo(initialPage);
+        let listenersAttached = false;
+        onAuthStateChanged(auth, user => {
+            appState.currentUser = user;
+            if (!listenersAttached) {
+                setupRealtimeListeners();
+                listenersAttached = true;
+            }
+            const initialPage = window.location.hash.substring(1) || 'home';
+            if (user && (initialPage === 'login' || !initialPage)) {
+                navigateTo('admin');
+            } else if (!user && initialPage.startsWith('admin')) {
+                navigateTo('login');
+            } else {
+                navigateTo(initialPage);
+            }
+        });
     }
     
     document.addEventListener('DOMContentLoaded', handleInitialPageLoad);
@@ -759,6 +1124,20 @@
         const pageId = event.state?.pageId || window.location.hash.substring(1) || 'home';
         navigateTo(pageId);
     });
+    
+    // Expor funções globais necessárias para os onclicks
+    window.openProductDetailModal = openProductDetailModal;
+    window.addToCart = addToCart;
+    window.updateCartQuantity = updateCartQuantity;
+    window.removeFromCart = removeFromCart;
+    window.openForgotPasswordModal = openForgotPasswordModal;
+    window.openNewsModal = openNewsModal;
+    window.deleteNews = deleteNews;
+    window.openProductModal = openProductModal;
+    window.deleteProduct = deleteProduct;
+    window.openCalendarEventModal = openCalendarEventModal;
+    window.deleteCalendarEvent = deleteCalendarEvent;
+    window.deleteGalleryImage = deleteGalleryImage;
 
     </script>
 </body>

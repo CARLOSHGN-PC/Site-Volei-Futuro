@@ -1077,24 +1077,22 @@
             onSnapshot(getCollectionRef(col), snapshot => {
                 appState[col] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 const currentPage = window.location.hash.substring(1) || 'home';
-                if (pageRenderers[currentPage]) {
-                   const currentContent = appRoot.innerHTML;
-                   if (currentContent) {
-                       pageRenderers[currentPage]();
-                   }
+                if (pageRenderers[currentPage] && appRoot.innerHTML) {
+                    pageRenderers[currentPage]();
                 }
             }, error => console.error(`Erro no listener da coleção ${col}: `, error));
         });
         
         onSnapshot(doc(db, `artifacts/${appId}/public/data/pages/home`), doc => {
-            appState.pageContent.home = doc.data() || {};
+            appState.pageContent.home = doc.data() || { headline: 'Vôlei Futuro', subheadline: 'Bem-vindo ao nosso site!' };
              const currentPage = window.location.hash.substring(1) || 'home';
-             if(currentPage === 'home') renderHomePage();
+             if(currentPage === 'home' && appRoot.innerHTML) renderHomePage();
         }, error => console.error("Erro no listener da página home: ", error));
+        
         onSnapshot(doc(db, `artifacts/${appId}/public/data/pages/about`), doc => {
-            appState.pageContent.about = doc.data() || {};
+            appState.pageContent.about = doc.data() || { mission: 'Nossa missão...' };
             const currentPage = window.location.hash.substring(1) || 'home';
-            if(currentPage === 'sobre') renderAboutPage();
+            if(currentPage === 'sobre' && appRoot.innerHTML) renderAboutPage();
         }, error => console.error("Erro no listener da página about: ", error));
     }
 

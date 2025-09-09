@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vôlei Futuro - Projeto Completo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .nav-link.active {
+            color: #dc2626; /* Cor vermelha para o link ativo */
+            font-weight: 700;
+        }
+        #app-root {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .cart-badge {
+            position: absolute;
+            top: -8px;
+            right: -10px;
+            height: 20px;
+            width: 20px;
+            font-size: 12px;
+        }
+        /* Estilo para o vídeo de fundo */
+        .hero-video {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            z-index: -100;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+
+    <!-- CABEÇALHO E NAVEGAÇÃO (FIXO PARA TODAS AS PÁGINAS) -->
+    <header class="bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50 border-b border-gray-800">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="#home" class="text-2xl font-bold text-white cursor-pointer">
+                VÔLEI <span class="text-red-600">FUTURO</span>
+            </a>
+            <div id="nav-menu" class="hidden md:flex space-x-6 items-center">
+                <a href="#home" class="nav-link hover:text-red-500 transition duration-300">Home</a>
+                <a href="#sobre" class="nav-link hover:text-red-500 transition duration-300">Sobre</a>
+                <a href="#noticias" class="nav-link hover:text-red-500 transition duration-300">Notícias</a>
+                <a href="#galeria" class="nav-link hover:text-red-500 transition duration-300">Galeria</a>
+                <a href="#loja" class="nav-link hover:text-red-500 transition duration-300">Loja</a>
+                <a href="#carrinho" class="relative text-white hover:text-red-500 transition duration-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    <span id="cart-badge" class="cart-badge bg-red-600 text-white rounded-full flex items-center justify-center font-bold">0</span>
+                </a>
+                <a href="#inscricao" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 shadow-lg">Inscreva-se</a>
+                <a href="#login" class="nav-link hover:text-red-500 transition duration-300 text-sm text-gray-400">Admin</a>
+            </div>
+            <div class="md:hidden">
+                <button id="mobile-menu-button" class="text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+        </nav>
+        <!-- Menu Mobile -->
+        <div id="mobile-menu" class="md:hidden hidden bg-gray-800 p-4">
+            <a href="#home" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Home</a>
+            <a href="#sobre" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Sobre</a>
+            <a href="#noticias" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Notícias</a>
+            <a href="#galeria" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Galeria</a>
+            <a href="#loja" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Loja</a>
+            <a href="#carrinho" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Carrinho</a>
+            <a href="#inscricao" class="block mt-2 text-center bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 shadow-lg">Inscreva-se</a>
+            <a href="#login" class="block text-center py-2 px-4 text-sm text-gray-400 hover:bg-gray-700 rounded mt-2">Admin</a>
+        </div>
+    </header>
+
+    <!-- CONTAINER PRINCIPAL ONDE O CONTEÚDO DAS PÁGINAS SERÁ INJETADO -->
+    <main id="app-root" class="min-h-screen"></main>
+
+    <!-- RODAPÉ (FIXO PARA TODAS AS PÁGINAS) -->
+    <footer class="bg-gray-900 py-10 border-t border-gray-800">
+        <div class="container mx-auto px-6 text-center text-gray-400">
+            <p>&copy; 2024 Vôlei Futuro. Todos os direitos reservados.</p>
+            <p class="text-sm mt-2">Desenvolvido com paixão pelo esporte.</p>
+            <div class="flex justify-center space-x-4 mt-4">
+                <a href="#" class="hover:text-white">Instagram</a>
+                <a href="#" class="hover:text-white">Facebook</a>
+                <a href="#" class="hover:text-white">YouTube</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODAL LIGHTBOX PARA GALERIA (GLOBAL) -->
+    <div id="lightbox-modal" class="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center p-4 z-[100] hidden" onclick="closeModal()">
+        <img id="lightbox-image" src="" alt="Imagem Ampliada" class="max-w-full max-h-full rounded-lg shadow-lg">
+        <button class="absolute top-4 right-4 text-white text-3xl font-bold">&times;</button>
+    </div>
+
+    <!-- MODAL PARA ADMIN (Ex: Adicionar/Editar Notícia) -->
+    <div id="admin-modal" class="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-[100] hidden">
+        <div id="admin-modal-content" class="bg-gray-800 rounded-lg p-8 w-full max-w-2xl shadow-xl">
+            <!-- Conteúdo do modal será injetado aqui -->
+        </div>
+    </div>
+
+
+    <!-- =============================================================================== -->
+    <!-- TEMPLATES DE CONTEÚDO PARA CADA PÁGINA -->
+    <!-- =============================================================================== -->
+
+    <!-- TEMPLATE: HOME -->
+    <template id="template-home">
+        <!-- Seção Herói com Vídeo -->
+        <section class="relative h-[70vh] md:h-[80vh] flex items-center justify-center text-center text-white overflow-hidden">
+             <video autoplay loop muted playsinline class="hero-video">
+                <!-- Vídeo de Pexels, por Tima Miroshnichenko -->
+                <source src="https://videos.pexels.com/video-files/8148813/8148813-hd_1280_720_25fps.mp4" type="video/mp4">
+                Seu navegador não suporta a tag de vídeo.
+            </video>
+            <div class="absolute inset-0 bg-black opacity-60 z-10"></div>
+            <div class="relative z-20 p-6">
+                <h1 class="text-4xl md:text-7xl font-black uppercase tracking-wider">Transformando Vidas<br>Através do Esporte</h1>
+                <p class="mt-4 text-lg md:text-xl max-w-2xl mx-auto">Mais que um time, uma família. O projeto Vôlei Futuro forma atletas e cidadãos dentro e fora das quadras.</p>
+                <a href="#inscricao" class="mt-8 inline-block bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300 shadow-xl text-lg">Faça Parte do Time!</a>
+            </div>
+        </section>
+        <!-- Seção Últimas Notícias -->
+        <section class="py-20 bg-gray-800">
+            <div class="container mx-auto px-6">
+                <h2 class="text-3xl md:text-4xl font-bold text-center mb-12">Últimas Notícias</h2>
+                <div id="home-news-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Notícias serão injetadas aqui pelo JS -->
+                </div>
+            </div>
+        </section>
+        <!-- Seção CTA -->
+        <section class="py-20 bg-red-700">
+            <div class="container mx-auto px-6 text-center">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Pronto para entrar em quadra?</h2>
+                <p class="text-red-200 text-lg mb-8 max-w-3xl mx-auto">O Vôlei Futuro está de portas abertas para novos atletas que sonham alto. Venha fazer parte da nossa história e desenvolver todo o seu potencial.</p>
+                <a href="#inscricao" class="bg-white text-red-700 font-bold py-3 px-8 rounded-lg hover:bg-gray-200 transition duration-300 shadow-xl text-lg">Quero me Inscrever</a>
+            </div>
+        </section>
+    </template>
+
+    <!-- TEMPLATE: SOBRE -->
+    <template id="template-sobre">
+        <div class="py-20">
+            <section class="container mx-auto px-6">
+                <div class="text-center">
+                    <h1 class="text-4xl md:text-5xl font-bold">Nossa <span class="text-red-600">História</span></h1>
+                    <p class="mt-4 text-lg text-gray-400 max-w-3xl mx-auto">Conheça a jornada do Vôlei Futuro, um projeto que nasceu de um sonho e hoje impacta a vida de dezenas de jovens atletas.</p>
+                </div>
+                <div class="mt-16 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                    <div class="order-2 md:order-1">
+                        <h2 class="text-3xl font-bold mb-4">Missão e Valores</h2>
+                        <p class="text-gray-300 mb-4">Nossa missão é usar o voleibol como ferramenta de transformação social, oferecendo treinamento de alta qualidade, educação e oportunidades de desenvolvimento pessoal para jovens. Acreditamos no poder do esporte para ensinar disciplina, trabalho em equipe, resiliência e respeito.</p>
+                        <p class="text-gray-300">Promovemos um ambiente seguro e inclusivo, onde cada atleta é incentivado a alcançar seu máximo potencial, tanto nas quadras quanto na vida.</p>
+                    </div>
+                    <div class="order-1 md:order-2">
+                         <img src="https://placehold.co/600x400/1F2937/FFFFFF?text=Nossa+Equipe" alt="Nossa Equipe" class="rounded-lg shadow-2xl">
+                    </div>
+                </div>
+                <div class="mt-20">
+                    <h2 class="text-3xl font-bold text-center mb-12">Nossa Comissão Técnica</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div class="text-center"><img src="https://placehold.co/300x300/1F2937/FFFFFF?text=Técnico" alt="Técnico Principal" class="w-40 h-40 rounded-full mx-auto mb-4 shadow-lg border-4 border-gray-700"><h3 class="text-xl font-bold">Carlos Almeida</h3><p class="text-red-500">Técnico Principal</p></div>
+                        <div class="text-center"><img src="https://placehold.co/300x300/1F2937/FFFFFF?text=Assistente" alt="Assistente Técnica" class="w-40 h-40 rounded-full mx-auto mb-4 shadow-lg border-4 border-gray-700"><h3 class="text-xl font-bold">Mariana Costa</h3><p class="text-red-500">Assistente Técnica</p></div>
+                        <div class="text-center"><img src="https://placehold.co/300x300/1F2937/FFFFFF?text=Preparador" alt="Preparador Físico" class="w-40 h-40 rounded-full mx-auto mb-4 shadow-lg border-4 border-gray-700"><h3 class="text-xl font-bold">João Pedro</h3><p class="text-red-500">Preparador Físico</p></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </template>
+
+    <!-- TEMPLATE: NOTÍCIAS -->
+    <template id="template-noticias">
+        <div class="py-20">
+            <section class="container mx-auto px-6">
+                <div class="text-center">
+                    <h1 class="text-4xl md:text-5xl font-bold">Mural de <span class="text-red-600">Notícias</span></h1>
+                    <p class="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">Fique por dentro de tudo que acontece no Vôlei Futuro.</p>
+                </div>
+                <div id="all-news-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-16">
+                    <!-- Todas as notícias serão injetadas aqui -->
+                </div>
+            </section>
+        </div>
+    </template>
+
+    <!-- TEMPLATE: GALERIA -->
+    <template id="template-galeria">
+       <div class="py-20">
+            <section class="container mx-auto px-6">
+                <div class="text-center">
+                    <h1 class="text-4xl md:text-5xl font-bold">Galeria de <span class="text-red-600">Mídia</span></h1>
+                    <p class="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">Reviva os melhores momentos do Vôlei Futuro.</p>
+                </div>
+                <div class="mt-16">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group cursor-pointer" onclick="openModal('https://placehold.co/1200x800/1F2937/FFFFFF?text=Final+do+Campeonato')"><img src="https://placehold.co/600x400/1F2937/FFFFFF?text=Final+do+Campeonato" alt="Foto do Jogo" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"></div>
+                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group cursor-pointer" onclick="openModal('https://placehold.co/1200x800/1F2937/FFFFFF?text=Treino+Intensivo')"><img src="https://placehold.co/600x400/1F2937/FFFFFF?text=Treino+Intensivo" alt="Foto do Treino" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"></div>
+                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group cursor-pointer" onclick="openModal('https://placehold.co/1200x800/1F2937/FFFFFF?text=Confraternização')"><img src="https://placehold.co/600x400/1F2937/FFFFFF?text=Confraternização" alt="Foto do Evento" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"></div>
+                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group cursor-pointer" onclick="openModal('https://placehold.co/1200x800/1F2937/FFFFFF?text=Jogo+Amistoso')"><img src="https://placehold.co/600x400/1F2937/FFFFFF?text=Jogo+Amistoso" alt="Foto do Jogo Amistoso" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"></div>
+                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group cursor-pointer" onclick="openModal('https://placehold.co/1200x800/1F2937/FFFFFF?text=Equipe+Sub-17')"><img src="https://placehold.co/600x400/1F2937/FFFFFF?text=Equipe+Sub-17" alt="Foto da Equipe Sub-17" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"></div>
+                        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group cursor-pointer" onclick="openModal('https://placehold.co/1200x800/1F2937/FFFFFF?text=Ação+Social')"><img src="https://placehold.co/600x400/1F2937/FFFFFF?text=Ação+Social" alt="Foto da Ação Social" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </template>
+
+    <!-- TEMPLATE: LOJA -->
+    <template id="template-loja">
+        <div class="py-20">
+            <section class="container mx-auto px-6">
+                <div class="text-center">
+                    <h1 class="text-4xl md:text-5xl font-bold">Nossa <span class="text-red-600">Loja Oficial</span></h1>
+                    <p class="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">Vista as cores do Vôlei Futuro e apoie nossos atletas.</p>
+                </div>
+                <div id="products-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mt-16">
+                    <!-- Produtos serão injetados aqui -->
+                </div>
+            </section>
+        </div>
+    </template>
+    
+    <!-- TEMPLATE: CARRINHO -->
+    <template id="template-carrinho">
+        <div class="py-20">
+            <section class="container mx-auto px-6">
+                 <h1 class="text-4xl font-bold text-center mb-12">Carrinho de <span class="text-red-600">Compras</span></h1>
+                 <div id="cart-items-container" class="max-w-4xl mx-auto">
+                     <!-- Itens do carrinho serão injetados aqui -->
+                 </div>
+                 <div id="cart-summary" class="max-w-4xl mx-auto mt-8 text-right">
+                    <!-- Resumo do carrinho será injetado aqui -->
+                 </div>
+            </section>
+        </div>
+    </template>
+
+    <!-- TEMPLATE: INSCRIÇÃO -->
+    <template id="template-inscricao">
+        <div class="py-20">
+            <section class="container mx-auto px-6">
+                <div class="max-w-3xl mx-auto bg-gray-800 p-8 md:p-12 rounded-lg shadow-2xl">
+                    <h1 class="text-4xl font-bold text-center mb-2">Faça Parte do <span class="text-red-600">Nosso Time</span></h1>
+                    <p class="text-center text-gray-400 mb-10">Preencha o formulário para participar de nossas seletivas.</p>
+                    <form id="inscription-form">
+                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="md:col-span-2"><label for="fullName" class="block text-sm font-semibold mb-2 text-gray-300">Nome Completo do Atleta</label><input type="text" id="fullName" name="fullName" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-red-500" required></div>
+                            <div><label for="birthDate" class="block text-sm font-semibold mb-2 text-gray-300">Data de Nascimento</label><input type="date" id="birthDate" name="birthDate" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-red-500" required></div>
+                            <div><label for="position" class="block text-sm font-semibold mb-2 text-gray-300">Posição Principal</label><select id="position" name="position" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-red-500" required><option value="">Selecione</option><option value="Levantador(a)">Levantador(a)</option><option value="Ponteiro(a)">Ponteiro(a)</option><option value="Oposto(a)">Oposto(a)</option><option value="Central">Central</option><option value="Líbero">Líbero</option></select></div>
+                            <div><label for="email" class="block text-sm font-semibold mb-2 text-gray-300">Email de Contato</label><input type="email" id="email" name="email" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-red-500" required></div>
+                            <div><label for="phone" class="block text-sm font-semibold mb-2 text-gray-300">Telefone / WhatsApp</label><input type="tel" id="phone" name="phone" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-red-500" required></div>
+                        </div>
+                        <div class="mt-10 text-center"><button type="submit" class="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-12 rounded-lg transition duration-300 shadow-lg text-lg">Enviar Inscrição</button></div>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </template>
+    
+    <!-- TEMPLATE: LOGIN -->
+    <template id="template-login">
+       <div class="py-20 flex items-center justify-center">
+             <div class="max-w-md w-full bg-gray-800 p-8 rounded-lg shadow-2xl">
+                 <h1 class="text-3xl font-bold text-center mb-2">Acesso <span class="text-red-600">Administrativo</span></h1>
+                 <p class="text-center text-gray-400 mb-8">Faça login para gerenciar o site.</p>
+                 <form id="login-form">
+                     <div class="mb-4">
+                         <label for="username" class="block text-sm font-semibold mb-2 text-gray-300">Usuário</label>
+                         <input type="text" id="username" value="admin" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-red-500">
+                     </div>
+                     <div class="mb-6">
+                         <label for="password" class="block text-sm font-semibold mb-2 text-gray-300">Senha</label>
+                         <input type="password" id="password" value="1234" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-red-500">
+                     </div>
+                     <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition duration-300 shadow-lg">Entrar</button>
+                 </form>
+             </div>
+        </div>
+    </template>
+
+    <!-- TEMPLATE: ADMIN DASHBOARD -->
+    <template id="template-admin">
+        <div class="flex flex-col md:flex-row">
+            <!-- Sidebar (Admin) -->
+            <aside class="w-full md:w-64 bg-gray-800 p-4">
+                <h2 class="text-xl font-bold mb-8 text-white">Painel de Controle</h2>
+                <nav class="flex flex-row md:flex-col md:space-y-2 space-x-2 md:space-x-0 overflow-x-auto">
+                    <a href="#admin" onclick="renderAdminSection('dashboard')" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg> Dashboard</a>
+                    <a href="#admin" onclick="renderAdminSection('noticias')" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 12h6m-1 8h.01"></path></svg> Notícias</a>
+                    <a href="#admin" onclick="renderAdminSection('inscricoes')" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a3.001 3.001 0 015.688 0M12 12a3 3 0 100-6 3 3 0 000 6z"></path></svg> Inscrições</a>
+                    <a href="#home" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg mt-0 md:mt-8 text-gray-400 hover:bg-gray-700"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg> Sair</a>
+                </nav>
+            </aside>
+            <!-- Conteúdo Principal (Admin) -->
+            <div id="admin-content-area" class="flex-1 p-6 md:p-10">
+                <!-- Conteúdo do admin será injetado aqui -->
+            </div>
+        </div>
+    </template>
+    
+    <script>
+    // ===============================================================================
+    // BANCO DE DADOS (SIMULADO) E ESTADO DA APLICAÇÃO
+    // ===============================================================================
+    let db = {
+        products: [
+            { id: 1, name: 'Camisa Oficial 2025', price: 89.90, image: 'https://placehold.co/600x600/1F2937/FFFFFF?text=Camisa+Oficial' },
+            { id: 2, name: 'Boné Exclusivo', price: 49.90, image: 'https://placehold.co/600x600/1F2937/FFFFFF?text=Boné' },
+            { id: 3, name: 'Moletom Time', price: 149.90, image: 'https://placehold.co/600x600/1F2937/FFFFFF?text=Moletom' },
+            { id: 4, name: 'Garrafa de Atleta', price: 35.00, image: 'https://placehold.co/600x600/1F2937/FFFFFF?text=Garrafa' },
+        ],
+        news: [
+            { id: 1, date: '15 de Setembro, 2025', title: 'Vitória emocionante na final do campeonato regional!', content: 'Nossa equipe sub-19 conquistou o título em um jogo de 5 sets de tirar o fôlego.', image: 'https://placehold.co/600x400/1F2937/FFFFFF?text=Vitória' },
+            { id: 2, date: '10 de Setembro, 2025', title: 'Novas peneiras abertas para a temporada 2026', content: 'Estamos em busca de novos talentos para integrar nossas equipes de base.', image: 'https://placehold.co/600x400/1F2937/FFFFFF?text=Peneiras' },
+            { id: 3, date: '05 de Setembro, 2025', title: 'Lançamento da nossa loja virtual oficial!', content: 'Adquira a nova camisa do time e outros produtos exclusivos para apoiar o projeto.', image: 'https://placehold.co/600x400/1F2937/FFFFFF?text=Loja+Oficial' }
+        ],
+        registrations: [
+            { id: 1, name: 'João da Silva', birthDate: '2008-05-10', position: 'Ponteiro(a)', email: 'joao.silva@email.com', phone: '(11) 98765-4321' }
+        ]
+    };
+
+    let cart = [];
+
+    // ===============================================================================
+    // ELEMENTOS GLOBAIS
+    // ===============================================================================
+    const appRoot = document.getElementById('app-root');
+    const allNavLinks = document.querySelectorAll('.nav-link');
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
+
+    // ===============================================================================
+    // FUNÇÕES DE RENDERIZAÇÃO DE PÁGINAS
+    // ===============================================================================
+    function renderPage(templateId) {
+        const template = document.getElementById(templateId);
+        if (template) {
+            appRoot.innerHTML = '';
+            appRoot.appendChild(template.content.cloneNode(true));
+        }
+    }
+
+    function renderHomePage() {
+        renderPage('template-home');
+        const newsGrid = document.getElementById('home-news-grid');
+        if (!newsGrid) return;
+        newsGrid.innerHTML = '';
+        db.news.slice(0, 3).forEach(article => {
+            newsGrid.innerHTML += `
+                <div class="bg-gray-900 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-2 transition duration-300">
+                    <img src="${article.image}" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <span class="text-sm text-red-500">${article.date}</span>
+                        <h3 class="text-xl font-bold mt-2 mb-3">${article.title}</h3>
+                        <p class="text-gray-400 text-sm mb-4">${article.content}</p>
+                        <a href="#noticias" class="font-semibold text-red-600 hover:text-red-500">Leia mais &rarr;</a>
+                    </div>
+                </div>`;
+        });
+    }
+
+    function renderNewsPage() {
+        renderPage('template-noticias');
+        const newsGrid = document.getElementById('all-news-grid');
+        if (!newsGrid) return;
+        newsGrid.innerHTML = '';
+        db.news.forEach(article => {
+             newsGrid.innerHTML += `
+                <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg">
+                    <img src="${article.image}" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <span class="text-sm text-red-500">${article.date}</span>
+                        <h3 class="text-xl font-bold mt-2 mb-3">${article.title}</h3>
+                        <p class="text-gray-400 text-sm">${article.content}</p>
+                    </div>
+                </div>`;
+        });
+    }
+    
+    function renderShopPage() {
+        renderPage('template-loja');
+        const productsGrid = document.getElementById('products-grid');
+        if(!productsGrid) return;
+        productsGrid.innerHTML = '';
+        db.products.forEach(product => {
+            productsGrid.innerHTML += `
+                <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group">
+                    <img src="${product.image}" alt="${product.name}" class="w-full h-64 object-cover">
+                    <div class="p-6 text-center">
+                        <h3 class="text-xl font-bold mb-2">${product.name}</h3>
+                        <p class="text-2xl font-semibold text-red-500 mb-4">R$ ${product.price.toFixed(2).replace('.', ',')}</p>
+                        <button onclick="addToCart(${product.id})" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Adicionar ao Carrinho</button>
+                    </div>
+                </div>`;
+        });
+    }
+
+    function renderCartPage() {
+        renderPage('template-carrinho');
+        updateCartDisplay();
+    }
+    
+    function renderInscriptionPage() {
+        renderPage('template-inscricao');
+        const form = document.getElementById('inscription-form');
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const newRegistration = {
+                id: Date.now(),
+                name: formData.get('fullName'),
+                birthDate: formData.get('birthDate'),
+                position: formData.get('position'),
+                email: formData.get('email'),
+                phone: formData.get('phone'),
+            };
+            db.registrations.unshift(newRegistration);
+            alert('Inscrição enviada com sucesso!');
+            form.reset();
+        });
+    }
+
+    function renderLoginPage() {
+        renderPage('template-login');
+        const form = document.getElementById('login-form');
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            // Simulação de login
+            navigateTo('admin');
+        });
+    }
+    
+    function renderAdminPage() {
+        renderPage('template-admin');
+        renderAdminSection('dashboard');
+    }
+
+    // ===============================================================================
+    // LÓGICA DO CARRINHO
+    // ===============================================================================
+    function addToCart(productId) {
+        const product = db.products.find(p => p.id === productId);
+        const cartItem = cart.find(item => item.id === productId);
+
+        if (cartItem) {
+            cartItem.quantity++;
+        } else {
+            cart.push({ ...product, quantity: 1 });
+        }
+        updateCartBadge();
+        alert(`${product.name} foi adicionado ao carrinho!`);
+    }
+    
+    function updateCartBadge() {
+        const badge = document.getElementById('cart-badge');
+        const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+        if (badge) {
+            badge.textContent = totalItems;
+            badge.style.display = totalItems > 0 ? 'flex' : 'none';
+        }
+    }
+
+    function updateCartDisplay() {
+        const container = document.getElementById('cart-items-container');
+        const summary = document.getElementById('cart-summary');
+        if (!container) return;
+
+        if (cart.length === 0) {
+            container.innerHTML = '<p class="text-center text-gray-400">Seu carrinho está vazio.</p>';
+            summary.innerHTML = '';
+            return;
+        }
+
+        container.innerHTML = cart.map(item => `
+            <div class="flex items-center justify-between bg-gray-800 p-4 rounded-lg mb-4 flex-wrap">
+                <div class="flex items-center mb-4 sm:mb-0">
+                    <img src="${item.image}" class="w-20 h-20 object-cover rounded-md mr-4">
+                    <div>
+                        <h3 class="font-bold text-lg">${item.name}</h3>
+                        <p class="text-red-500">R$ ${item.price.toFixed(2).replace('.', ',')}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 w-full sm:w-auto justify-end">
+                    <div class="flex items-center border border-gray-600 rounded">
+                        <button onclick="updateCartQuantity(${item.id}, -1)" class="px-3 py-1">-</button>
+                        <span class="px-4">${item.quantity}</span>
+                        <button onclick="updateCartQuantity(${item.id}, 1)" class="px-3 py-1">+</button>
+                    </div>
+                    <p class="font-bold w-24 text-right">R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}</p>
+                    <button onclick="removeFromCart(${item.id})" class="text-gray-400 hover:text-red-500 text-2xl">&times;</button>
+                </div>
+            </div>`).join('');
+        
+        const totalPrice = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+        summary.innerHTML = `
+            <h2 class="text-2xl font-bold">Total: <span class="text-red-600">R$ ${totalPrice.toFixed(2).replace('.', ',')}</span></h2>
+            <button onclick="alert('Obrigado por sua compra! (Simulação)')" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg">Finalizar Compra</button>`;
+    }
+    
+    function updateCartQuantity(productId, change) {
+        const item = cart.find(i => i.id === productId);
+        if (item) {
+            item.quantity += change;
+            if (item.quantity <= 0) {
+                removeFromCart(productId);
+            } else {
+                updateCartDisplay();
+                updateCartBadge();
+            }
+        }
+    }
+
+    function removeFromCart(productId) {
+        cart = cart.filter(item => item.id !== productId);
+        updateCartDisplay();
+        updateCartBadge();
+    }
+
+    // ===============================================================================
+    // LÓGICA DO PAINEL ADMIN
+    // ===============================================================================
+    const adminContentArea = () => document.getElementById('admin-content-area');
+
+    function renderAdminSection(section) {
+        document.querySelectorAll('.admin-nav-link').forEach(link => link.classList.remove('bg-red-600', 'text-white'));
+        document.querySelector(`.admin-nav-link[onclick="renderAdminSection('${section}')"]`).classList.add('bg-red-600', 'text-white');
+
+        if (section === 'dashboard') renderAdminDashboard();
+        if (section === 'noticias') renderAdminNews();
+        if (section === 'inscricoes') renderAdminRegistrations();
+    }
+    
+    function renderAdminDashboard() {
+        const contentArea = adminContentArea();
+        if (!contentArea) return;
+        contentArea.innerHTML = `
+            <h1 class="text-3xl font-bold mb-8">Dashboard</h1>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg"><h3 class="text-gray-400 text-sm font-bold">NOVAS INSCRIÇÕES</h3><p class="text-3xl font-black text-red-600">${db.registrations.length}</p></div>
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg"><h3 class="text-gray-400 text-sm font-bold">NOTÍCIAS PUBLICADAS</h3><p class="text-3xl font-black">${db.news.length}</p></div>
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg"><h3 class="text-gray-400 text-sm font-bold">PRODUTOS NA LOJA</h3><p class="text-3xl font-black">${db.products.length}</p></div>
+            </div>`;
+    }
+
+    function renderAdminNews() {
+        const contentArea = adminContentArea();
+        if (!contentArea) return;
+        contentArea.innerHTML = `
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Gerenciar Notícias</h2>
+                <button onclick="openNewsModal()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Nova Postagem</button>
+            </div>
+            <div class="bg-gray-800 rounded-lg overflow-x-auto">
+                <table class="w-full text-left min-w-max">
+                    <thead class="bg-gray-700"><tr><th class="p-4">Título</th><th class="p-4">Data</th><th class="p-4">Ações</th></tr></thead>
+                    <tbody>
+                        ${db.news.map(article => `
+                            <tr class="border-b border-gray-700">
+                                <td class="p-4">${article.title}</td><td class="p-4">${article.date}</td>
+                                <td class="p-4 whitespace-nowrap">
+                                    <button onclick="openNewsModal(${article.id})" class="text-green-400 mr-4">Editar</button>
+                                    <button onclick="deleteNews(${article.id})" class="text-red-500">Excluir</button>
+                                </td>
+                            </tr>`).join('') || '<tr><td colspan="3" class="p-4 text-center text-gray-400">Nenhuma notícia encontrada.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>`;
+    }
+    
+    function renderAdminRegistrations() {
+        const contentArea = adminContentArea();
+        if (!contentArea) return;
+        contentArea.innerHTML = `
+            <h2 class="text-2xl font-bold mb-4">Inscrições Recebidas</h2>
+            <div class="bg-gray-800 rounded-lg overflow-x-auto">
+                 <table class="w-full text-left min-w-max">
+                    <thead class="bg-gray-700"><tr><th class="p-4">Nome</th><th class="p-4">Nascimento</th><th class="p-4">Posição</th><th class="p-4">Contato</th></tr></thead>
+                    <tbody>
+                        ${db.registrations.map(reg => `
+                             <tr class="border-b border-gray-700">
+                                <td class="p-4">${reg.name}</td>
+                                <td class="p-4">${reg.birthDate}</td>
+                                <td class="p-4">${reg.position}</td>
+                                <td class="p-4">${reg.email}</td>
+                             </tr>`).join('') || '<tr><td colspan="4" class="p-4 text-center text-gray-400">Nenhuma inscrição encontrada.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>`;
+    }
+
+    function openNewsModal(id = null) {
+        const article = id ? db.news.find(a => a.id === id) : null;
+        const modalContent = document.getElementById('admin-modal-content');
+        modalContent.innerHTML = `
+            <h2 class="text-2xl font-bold mb-6">${id ? 'Editar' : 'Nova'} Notícia</h2>
+            <form id="news-form">
+                <input type="hidden" name="id" value="${id || ''}">
+                <div class="mb-4"><label class="block mb-2">Título</label><input type="text" name="title" class="w-full bg-gray-700 p-2 rounded" value="${article?.title || ''}" required></div>
+                <div class="mb-4"><label class="block mb-2">Conteúdo</label><textarea name="content" rows="4" class="w-full bg-gray-700 p-2 rounded" required>${article?.content || ''}</textarea></div>
+                <div class="mb-6"><label class="block mb-2">URL da Imagem</label><input type="text" name="image" class="w-full bg-gray-700 p-2 rounded" value="${article?.image || 'https://placehold.co/600x400/1F2937/FFFFFF?text=Nova+Notícia'}" required></div>
+                <div class="flex justify-end gap-4">
+                    <button type="button" onclick="closeAdminModal()" class="bg-gray-600 hover:bg-gray-700 py-2 px-4 rounded">Cancelar</button>
+                    <button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Salvar</button>
+                </div>
+            </form>`;
+        document.getElementById('admin-modal').classList.remove('hidden');
+        document.getElementById('news-form').addEventListener('submit', saveNews);
+    }
+    
+    function closeAdminModal() {
+        document.getElementById('admin-modal').classList.add('hidden');
+    }
+
+    function saveNews(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+        const id = parseInt(formData.get('id'));
+        const articleData = {
+            title: formData.get('title'),
+            content: formData.get('content'),
+            image: formData.get('image'),
+            date: new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric'})
+        };
+
+        if (id) {
+            const index = db.news.findIndex(a => a.id === id);
+            db.news[index] = { ...db.news[index], ...articleData };
+        } else {
+            db.news.unshift({ id: Date.now(), ...articleData });
+        }
+        closeAdminModal();
+        renderAdminNews();
+    }
+    
+    function deleteNews(id) {
+        if (confirm('Tem certeza que deseja excluir esta notícia?')) {
+            db.news = db.news.filter(a => a.id !== id);
+            renderAdminNews();
+        }
+    }
+
+    // ===============================================================================
+    // ROTEAMENTO E NAVEGAÇÃO
+    // ===============================================================================
+    const pageRenderers = {
+        'home': renderHomePage, 'sobre': () => renderPage('template-sobre'),
+        'noticias': renderNewsPage, 'galeria': () => renderPage('template-galeria'),
+        'loja': renderShopPage, 'carrinho': renderCartPage,
+        'inscricao': renderInscriptionPage, 'login': renderLoginPage,
+        'admin': renderAdminPage
+    };
+    
+    function navigateTo(pageId) {
+        const header = document.querySelector('header');
+        const footer = document.querySelector('footer');
+        header.style.display = pageId === 'admin' ? 'none' : '';
+        footer.style.display = pageId === 'admin' ? 'none' : '';
+
+        const renderFunction = pageRenderers[pageId];
+        if (renderFunction) {
+            appRoot.style.opacity = 0;
+            setTimeout(() => {
+                renderFunction();
+                appRoot.style.opacity = 1;
+                window.scrollTo(0, 0);
+                if (window.location.hash !== `#${pageId}`) {
+                    history.pushState({pageId}, '', `#${pageId}`);
+                }
+                updateActiveLink(pageId);
+            }, 200);
+        }
+    }
+
+    function updateActiveLink(activePageId) {
+        allNavLinks.forEach(link => {
+            if (link.getAttribute('href') === `#${activePageId}`) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
+    }
+
+    function closeMobileMenu() {
+        mobileMenu.classList.add('hidden');
+    }
+    
+    mobileMenuButton.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+    });
+    
+    // Handler de navegação global
+    document.addEventListener('click', e => {
+        const link = e.target.closest('a[href^="#"]');
+        if (link) {
+            e.preventDefault();
+            const pageId = link.getAttribute('href').substring(1);
+            
+            // Lógica para fechar menu mobile
+            if (link.closest('#mobile-menu')) {
+                closeMobileMenu();
+            }
+            // Navega para a página
+            if(pageId){
+                 navigateTo(pageId);
+            }
+        }
+    });
+
+    // ===============================================================================
+    // INICIALIZAÇÃO E EVENTOS GLOBAIS
+    // ===============================================================================
+    const modal = document.getElementById('lightbox-modal');
+    const modalImage = document.getElementById('lightbox-image');
+
+    function openModal(imageSrc) {
+        if (modal && modalImage) {
+            modalImage.src = imageSrc;
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeModal() {
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+    }
+    
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+            closeModal();
+        }
+    });
+    
+    function handleInitialPageLoad() {
+        updateCartBadge();
+        const initialPage = window.location.hash.substring(1) || 'home';
+        navigateTo(initialPage);
+    }
+    
+    document.addEventListener('DOMContentLoaded', handleInitialPageLoad);
+    
+    window.addEventListener('popstate', (event) => {
+        const pageId = event.state?.pageId || window.location.hash.substring(1) || 'home';
+        navigateTo(pageId);
+    });
+
+    </script>
+</body>
+</html>
+

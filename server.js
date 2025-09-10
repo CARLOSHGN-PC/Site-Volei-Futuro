@@ -25,45 +25,49 @@ app.get('/', (req, res) => {
 });
 
 app.post('/calculate-shipping', async (req, res) => {
-    const { cepDestino } = req.body;
-    const cepOrigem = '01451001'; // CEP de Origem (Ex: da loja)
-    const peso = 1000; // 1kg em gramas
-    const altura = 5; // cm
-    const largura = 15; // cm
-    const comprimento = 20; // cm
-    const chaveApi = 'teste'; // Chave de teste da API CepCerto
+    const { cepDestino, items } = req.body;
+    const FRENET_API_TOKEN = "4692D145RD022R4DCARA04ER34EA62422852";
 
-    if (!cepDestino) {
-        return res.status(400).json({ error: 'CEP de destino é obrigatório.' });
+    if (!cepDestino || !items) {
+        return res.status(400).json({ error: 'CEP de destino e itens do carrinho são obrigatórios.' });
     }
 
-    const url = `https://cepcerto.com/ws/json-frete/${cepOrigem}/${cepDestino}/${peso}/${altura}/${largura}/${comprimento}/${chaveApi}`;
+    const payload = {
+        "SellerCEP": "01451001",
+        "RecipientCEP": cepDestino,
+        "ShipmentInvoiceValue": items.reduce((total, item) => total + (item.price * item.quantity), 0),
+        "ShippingItemArray": items.map(item => ({
+            "Height": 5,
+            "Length": 20,
+            "Width": 15,
+            "Weight": 1,
+            "Quantity": item.quantity
+        })),
+    };
 
     try {
-        const response = await axios.get(url);
-        const data = response.data;
+        const response = await axios.post('https://api.frenet.com.br/shipping/quote', payload, {
+            headers: {
+                'Content-Type': 'application/json',
+                'token': FRENET_API_TOKEN
+            }
+        });
 
-        // A API da CepCerto retorna um único objeto, vamos transformá-lo em um array
-        // para manter a compatibilidade com o frontend que espera múltiplos resultados (PAC, SEDEX)
-        const results = [];
-        if (data.valor_pac) {
-            results.push({
-                Codigo: '04510', // PAC
-                Valor: data.valor_pac.toFixed(2).replace('.', ','),
-                PrazoEntrega: data.prazo_pac,
-            });
+        const services = response.data.ShippingSevicesArray;
+        if (!services) {
+            return res.json([]);
         }
-        if (data.valor_sedex) {
-             results.push({
-                Codigo: '04014', // SEDEX
-                Valor: data.valor_sedex.toFixed(2).replace('.', ','),
-                PrazoEntrega: data.prazo_sedex,
-            });
-        }
+
+        const results = services.map(service => ({
+            Codigo: service.ServiceCode,
+            Valor: service.ShippingPrice,
+            PrazoEntrega: service.DeliveryTime,
+            Servico: service.ServiceDescription
+        }));
 
         res.json(results);
     } catch (error) {
-        console.error('Erro ao calcular frete com CepCerto:', error.message);
+        console.error('Erro ao calcular frete com Frenet:', error.response ? error.response.data : error.message);
         res.status(500).json({ error: 'Falha ao calcular o frete.', details: error.message });
     }
 });

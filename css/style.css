@@ -1,0 +1,42 @@
+body {
+    font-family: 'Inter', sans-serif;
+}
+.nav-link.active {
+    color: #dc2626; /* Cor vermelha para o link ativo */
+    font-weight: 700;
+}
+#app-root {
+    transition: opacity 0.3s ease-in-out;
+}
+.cart-badge {
+    position: absolute;
+    top: -8px;
+    right: -10px;
+    height: 20px;
+    width: 20px;
+    font-size: 12px;
+}
+/* Estilo para o vídeo de fundo */
+.hero-video {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    z-index: -100;
+    object-fit: cover;
+}
+/* Scrollbar customizada para o modal */
+.modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+.modal-body::-webkit-scrollbar-track {
+    background: #2d3748;
+}
+.modal-body::-webkit-scrollbar-thumb {
+    background-color: #4a5568;
+    border-radius: 10px;
+    border: 2px solid #2d3748;
+}

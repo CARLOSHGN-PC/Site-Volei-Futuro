@@ -58,12 +58,14 @@ app.post('/calculate-shipping', async (req, res) => {
             return res.json([]);
         }
 
-        const results = services.map(service => ({
-            Codigo: service.ServiceCode,
-            Valor: service.ShippingPrice,
-            PrazoEntrega: service.DeliveryTime,
-            Servico: service.ServiceDescription
-        }));
+        const results = services
+            .filter(service => !service.ServiceDescription.includes('Mini Envios'))
+            .map(service => ({
+                Codigo: service.ServiceCode,
+                Valor: service.ShippingPrice,
+                PrazoEntrega: service.DeliveryTime,
+                Servico: service.ServiceDescription
+            }));
 
         res.json(results);
     } catch (error) {

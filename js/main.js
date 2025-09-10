@@ -62,6 +62,7 @@ let appState = {
     currentUser: null,
     calculatedShipping: [],
     currentAdminSection: 'dashboard',
+    freeShippingThreshold: null,
 };
 
 let cart = [];
@@ -524,6 +525,16 @@ async function handleCalculateShipping() {
         const data = await response.json();
         appState.calculatedShipping = data;
 
+        const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+        if (appState.freeShippingThreshold && subtotal >= appState.freeShippingThreshold) {
+            data.unshift({
+                Codigo: 'frete-gratis',
+                Valor: '0.00',
+                PrazoEntrega: 'N/A',
+                Servico: 'Frete Grátis'
+            });
+        }
+
         if (!data || data.length === 0 || data.every(opt => opt.Valor === '0,00')) {
              shippingOptionsContainer.innerHTML = '<p class="text-red-500">Nenhuma opção de frete encontrada para o CEP informado.</p>';
              return;
@@ -682,9 +693,48 @@ function renderAdminSection(section) {
     const renderers = {
         'dashboard': renderAdminDashboard, 'paginas': renderAdminPages, 'noticias': renderAdminNews,
         'calendario': renderAdminCalendar, 'galeria': renderAdminGallery, 'loja': renderAdminShop,
-        'inscricoes': renderAdminRegistrations,
+        'frete-gratis': renderAdminFreeShipping, 'inscricoes': renderAdminRegistrations,
     };
     if(renderers[section]) renderers[section]();
+}
+
+function renderAdminFreeShipping() {
+    const contentArea = adminContentArea();
+    if (!contentArea) return;
+
+    contentArea.innerHTML = `
+        <h2 class="text-2xl font-bold mb-4">Regra de Frete Grátis</h2>
+        <form id="free-shipping-form" class="bg-gray-800 p-6 rounded-lg">
+            <div class="mb-4">
+                <label for="freeShippingThreshold" class="block text-sm font-semibold mb-2 text-gray-300">
+                    Oferecer frete grátis para compras acima de (R$):
+                </label>
+                <input type="number" step="0.01" id="freeShippingThreshold" name="freeShippingThreshold"
+                       class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4"
+                       value="${appState.freeShippingThreshold || ''}"
+                       placeholder="Deixe em branco para desativar">
+            </div>
+            <div class="text-right">
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Salvar Regra</button>
+            </div>
+        </form>
+    `;
+
+    document.getElementById('free-shipping-form').addEventListener('submit', saveFreeShippingThreshold);
+}
+
+async function saveFreeShippingThreshold(e) {
+    e.preventDefault();
+    const threshold = e.target.freeShippingThreshold.value;
+    const value = threshold ? parseFloat(threshold) : null;
+
+    try {
+        await setDoc(doc(db, `artifacts/${appId}/public/data/config/freeShipping`), { threshold: value });
+        showCustomAlert('Sucesso!', 'A regra de frete grátis foi atualizada.');
+    } catch (error) {
+        console.error('Erro ao salvar regra de frete grátis:', error);
+        showCustomAlert('Erro', 'Não foi possível salvar a regra de frete grátis.');
+    }
 }
 
 function renderAdminDashboard() {
@@ -1255,6 +1305,10 @@ function setupRealtimeListeners() {
         const currentPage = window.location.hash.substring(1) || 'home';
         if(currentPage === 'sobre' && appRoot.innerHTML) renderAboutPage();
     }, error => console.error("Erro no listener da página about: ", error));
+
+    onSnapshot(doc(db, `artifacts/${appId}/public/data/config/freeShipping`), doc => {
+        appState.freeShippingThreshold = doc.exists() ? doc.data().threshold : null;
+    }, error => console.error("Erro no listener da config de frete grátis: ", error));
 }
 
 function handleUserAuthState(user) {

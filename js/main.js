@@ -65,27 +65,7 @@ let appState = {
     freeShippingThreshold: null,
     sponsors: [],
     orders: [],
-    privacyPolicy: `
-        <h1>Política de Privacidade</h1>
-        <p class="mb-4">A sua privacidade é importante para nós. É política do Vôlei Futuro respeitar a sua privacidade em relação a qualquer informação sua que possamos coletar no site Vôlei Futuro.</p>
-        <h2 class="text-2xl font-bold mt-6 mb-4">1. Coleta de Dados</h2>
-        <p class="mb-4">Solicitamos informações pessoais apenas quando realmente precisamos delas para lhe fornecer um serviço. Fazemo-lo por meios justos e legais, com o seu conhecimento e consentimento. Também informamos por que estamos coletando e como será usado.</p>
-        <p class="mb-4">Coletamos os seguintes tipos de dados:</p>
-        <ul class="list-disc list-inside mb-4">
-            <li><strong>Dados de Cadastro:</strong> Nome, e-mail, e senha para a criação de contas de usuário.</li>
-            <li><strong>Dados de Inscrição de Atletas:</strong> Nome completo, data de nascimento, posição, e-mail e telefone para avaliação em nossas seletivas.</li>
-            <li><strong>Dados de Compra:</strong> Informações de contato e endereço de entrega para processamento de pedidos e cálculo de frete. Os dados de pagamento são processados diretamente por nosso parceiro (PagSeguro) e não são armazenados em nossos servidores.</li>
-        </ul>
-        <h2 class="text-2xl font-bold mt-6 mb-4">2. Uso dos Dados</h2>
-        <p class="mb-4">Apenas retemos as informações coletadas pelo tempo necessário para fornecer o serviço solicitado. Quando armazenamos dados, protegemos dentro de meios comercialmente aceitáveis para evitar perdas e roubos, bem como acesso, divulgação, cópia, uso ou modificação não autorizados.</p>
-        <h2 class="text-2xl font-bold mt-6 mb-4">3. Compartilhamento de Dados</h2>
-        <p class="mb-4">Não compartilhamos informações de identificação pessoal publicamente ou com terceiros, exceto quando exigido por lei ou para viabilizar a operação dos nossos serviços (ex: com o gateway de pagamento para processar a compra).</p>
-        <h2 class="text-2xl font-bold mt-6 mb-4">4. Direitos do Usuário</h2>
-        <p class="mb-4">Você é livre para recusar a nossa solicitação de informações pessoais, entendendo que talvez não possamos fornecer alguns dos serviços desejados. Você pode, a qualquer momento, solicitar a visualização ou exclusão dos seus dados pessoais através dos nossos canais de contato.</p>
-        <h2 class="text-2xl font-bold mt-6 mb-4">5. Compromisso do Usuário</h2>
-        <p class="mb-4">O usuário se compromete a fazer uso adequado dos conteúdos e da informação que o Vôlei Futuro oferece no site e com caráter enunciativo, mas не limitativo: a) não se envolver em atividades que sejam ilegais ou contrárias à boa fé e à ordem pública; b) não difundir propaganda ou conteúdo de natureza racista, xenofóbica, ou sobre azar, qualquer tipo de pornografia ilegal, de apologia ao terrorismo ou contra os direitos humanos; c) não causar danos aos sistemas físicos (hardwares) e lógicos (softwares) do Vôlei Futuro, de seus fornecedores ou terceiros, para introduzir ou disseminar vírus informáticos ou quaisquer outros sistemas de hardware ou software que sejam capazes de causar os danos anteriormente mencionados.</p>
-        <p>Esta política é efetiva a partir de Setembro de 2024.</p>
-    `,
+    privacyPolicy: '',
 };
 
 let cart = [];
@@ -635,18 +615,13 @@ function updateCartQuantity(productId, change) {
     if (item) {
         item.quantity += change;
         if (item.quantity <= 0) {
-            removeFromCart(productId); // This function already handles updates
+            removeFromCart(productId);
         } else {
+            updateCartDisplay();
             updateCartBadge();
-            updateCartDisplay(); // Redraws the items list
-
             const cepInput = document.getElementById('cep-input');
             if (cepInput && cepInput.value) {
-                // Recalculate shipping, which will then update the summary
                 handleCalculateShipping();
-            } else {
-                // If no CEP, just update the summary with the new subtotal
-                updateCartSummary();
             }
         }
     }
@@ -676,63 +651,37 @@ function showCustomAlert(title, message) {
     openModal('generic-modal', null, contentHTML);
 }
 
-function handleCheckout() {
+async function handleCheckout() {
     if (cart.length === 0) {
         showCustomAlert("Carrinho Vazio", "Você precisa adicionar itens ao carrinho antes de finalizar a compra.");
         return;
     }
     if (!appState.currentUser) {
-        showCustomAlert("Login Necessário", "Você precisa estar logado para finalizar a compra. Redirecionando...");
+        showCustomAlert("Login Necessário", "Você precisa estar logado para finalizar a compra. Estamos te redirecionando para a página de login.");
         navigateTo('login');
         return;
     }
+
     const selectedShipping = document.querySelector('input[name="shipping-option"]:checked');
-    if (!selectedShipping && appState.calculatedShipping.length > 0 && appState.freeShippingThreshold === null) {
-         showCustomAlert("Frete Necessário", "Por favor, selecione uma opção de frete.");
-         return;
-    }
-
-    navigateTo('checkout');
-}
-
-async function confirmAndPay() {
-    const addressForm = document.getElementById('shipping-address-form');
-    if (!addressForm.checkValidity()) {
-        showCustomAlert("Formulário Inválido", "Por favor, preencha todos os campos obrigatórios do endereço.");
-        addressForm.reportValidity(); // Show native browser validation popups
+    if (!selectedShipping && appState.calculatedShipping.length > 0) {
+        showCustomAlert("Frete Necessário", "Por favor, selecione uma opção de frete.");
         return;
     }
 
-    const formData = new FormData(addressForm);
-    const shippingAddress = {
-        street: formData.get('street'),
-        number: formData.get('number'),
-        complement: formData.get('complement'),
-        locality: formData.get('locality'),
-        city: formData.get('city'),
-        region_code: formData.get('region_code'),
-        postal_code: formData.get('cep').replace(/\D/g, ''),
-        country: 'BRA'
-    };
-
-    const selectedShipping = document.querySelector('input[name="shipping-option"]:checked');
-     const shippingDetails = selectedShipping ? {
+    const shippingDetails = selectedShipping ? {
         id: selectedShipping.value,
         cost: parseFloat(selectedShipping.dataset.cost)
     } : null;
 
-    const submitButton = document.getElementById('confirm-checkout-btn');
-    submitButton.disabled = true;
-    submitButton.textContent = 'Processando...';
-
     try {
         const response = await fetch('/create-checkout', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify({
                 items: cart,
                 shipping: shippingDetails,
-                shippingAddress: shippingAddress,
                 userId: appState.currentUser.uid,
                 userEmail: appState.currentUser.email,
                 userName: appState.currentUser.displayName,
@@ -740,11 +689,11 @@ async function confirmAndPay() {
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'A resposta do servidor não foi OK.');
+            throw new Error('A resposta do servidor não foi OK.');
         }
 
         const result = await response.json();
+
         if (result && result.checkoutUrl) {
             window.location.href = result.checkoutUrl;
         } else {
@@ -752,9 +701,7 @@ async function confirmAndPay() {
         }
     } catch (error) {
         console.error("Erro ao finalizar a compra: ", error);
-        showCustomAlert("Erro no Checkout", `Ocorreu um erro: ${error.message}`);
-        submitButton.disabled = false;
-        submitButton.textContent = 'Confirmar e Pagar';
+        showCustomAlert("Erro no Checkout", "Ocorreu um erro ao tentar se comunicar com o sistema de pagamento. Por favor, tente novamente mais tarde.");
     }
 }
 
@@ -920,9 +867,8 @@ function renderAdminSponsors() {
     let tableRows = appState.sponsors.map(sponsor => `
         <tr class="border-b border-gray-700">
             <td class="p-4"><img src="${sponsor.logoUrl}" class="h-12 bg-white p-1 rounded"></td>
-            <td class="p-4"><a href="${sponsor.linkUrl}" target="_blank" class="text-blue-400 hover:underline">${sponsor.name}</a></td>
-            <td class="p-4 whitespace-nowrap">
-                <button data-admin-action="open-sponsor-modal" data-id="${sponsor.id}" class="text-green-400 hover:text-green-300 mr-4">Editar</button>
+            <td class="p-4"><a href="${sponsor.linkUrl}" target="_blank" class="text-blue-400 hover:underline">${sponsor.linkUrl}</a></td>
+            <td class="p-4">
                 <button data-admin-action="delete-sponsor" data-id="${sponsor.id}" class="text-red-500 hover:text-red-400">Excluir</button>
             </td>
         </tr>
@@ -974,91 +920,34 @@ function renderAdminSponsors() {
     document.getElementById('sponsor-form').addEventListener('submit', saveSponsor);
 }
 
-function openSponsorModal(id = null) {
-    const sponsor = id ? appState.sponsors.find(s => s.id === id) : null;
-    const modalContent = `
-        <h2 class="text-2xl font-bold mb-6">${id ? 'Editar' : 'Novo'} Patrocinador</h2>
-        <form id="sponsor-form-modal">
-            <input type="hidden" name="id" value="${id || ''}">
-            <input type="hidden" name="existingLogoUrl" value="${sponsor?.logoUrl || ''}">
-            <div class="mb-4">
-                <label class="block mb-2">Nome do Patrocinador</label>
-                <input type="text" name="sponsorName" class="w-full bg-gray-700 p-2 rounded" value="${sponsor?.name || ''}" required>
-            </div>
-            <div class="mb-4">
-                <label class="block mb-2">Link do Site (URL)</label>
-                <input type="url" name="sponsorLink" class="w-full bg-gray-700 p-2 rounded" value="${sponsor?.linkUrl || ''}" required>
-            </div>
-            <div class="mb-6">
-                <label class="block mb-2">Logo do Patrocinador</label>
-                <input type="file" name="imageFile" id="imageFile" class="w-full bg-gray-700 p-2 rounded" accept="image/*">
-                <div class="mt-4">
-                    <img id="image-preview" src="${sponsor?.logoUrl || 'https://via.placeholder.com/150'}" alt="Pré-visualização" class="w-32 h-32 object-contain rounded">
-                </div>
-            </div>
-            <div class="flex justify-end gap-4">
-                <button type="button" data-close-modal="generic-modal" class="bg-gray-600 hover:bg-gray-700 py-2 px-4 rounded">Cancelar</button>
-                <button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Salvar</button>
-            </div>
-        </form>
-    `;
-    openModal('generic-modal', null, modalContent);
-
-    const imageFileInput = document.getElementById('imageFile');
-    const imagePreview = document.getElementById('image-preview');
-    imageFileInput.addEventListener('change', () => {
-        const file = imageFileInput.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => { imagePreview.src = e.target.result; };
-            reader.readAsDataURL(file);
-        }
-    });
-
-    document.getElementById('sponsor-form-modal').addEventListener('submit', saveSponsor);
-}
-
-
 async function saveSponsor(e) {
     e.preventDefault();
     const form = e.target;
-    const id = form.id.value;
     const sponsorName = form.sponsorName.value;
     const sponsorLink = form.sponsorLink.value;
     const imageFile = form.imageFile.files[0];
-    const existingLogoUrl = form.existingLogoUrl.value;
 
     const submitButton = form.querySelector('button[type="submit"]');
     submitButton.disabled = true;
     submitButton.textContent = 'Salvando...';
 
-    let logoUrl = existingLogoUrl;
-    if (imageFile) {
-        logoUrl = await uploadImage(imageFile);
-        if (!logoUrl) {
-            submitButton.disabled = false;
-            submitButton.textContent = 'Salvar';
-            return;
-        }
+    const logoUrl = await uploadImage(imageFile);
+    if (!logoUrl) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Adicionar Patrocinador';
+        return;
     }
 
-    const sponsorData = { name: sponsorName, linkUrl: sponsorLink, logoUrl: logoUrl };
-
     try {
-        if (id) {
-            await updateDoc(getDocRef('sponsors', id), sponsorData);
-        } else {
-            await addDoc(getCollectionRef('sponsors'), sponsorData);
-            form.reset(); // Only reset for new entries
-            document.getElementById('image-preview').classList.add('hidden');
-        }
-        closeModal('generic-modal');
+        await addDoc(getCollectionRef('sponsors'), { name: sponsorName, linkUrl: sponsorLink, logoUrl: logoUrl });
+        form.reset();
+        document.getElementById('image-preview').classList.add('hidden');
     } catch (error) {
         console.error('Erro ao salvar patrocinador:', error);
         showCustomAlert('Erro', 'Não foi possível salvar o patrocinador.');
     } finally {
         submitButton.disabled = false;
-        submitButton.textContent = 'Salvar';
+        submitButton.textContent = 'Adicionar Patrocinador';
     }
 }
 
@@ -1512,6 +1401,8 @@ async function deleteGalleryImage(id) {
     if (confirm('Tem certeza?')) await deleteDoc(getDocRef('galleryImages', id));
 }
 
+const IMGBB_API_KEY = "163a5cae060857c200bca8b90c5dd652";
+
 async function uploadImage(imageFile) {
     if (!imageFile) return null;
 
@@ -1519,7 +1410,7 @@ async function uploadImage(imageFile) {
     formData.append('image', imageFile);
 
     try {
-        const response = await fetch('/upload-image', {
+        const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
             method: 'POST',
             body: formData,
         });
@@ -1527,7 +1418,7 @@ async function uploadImage(imageFile) {
         if (result.success) {
             return result.data.url;
         } else {
-            throw new Error(result.error);
+            throw new Error(result.error.message);
         }
     } catch (error) {
         console.error('Image upload failed:', error);
@@ -1590,51 +1481,6 @@ async function deleteProduct(id) {
 // ===============================================================================
 // ROTEAMENTO E NAVEGAÇÃO
 // ===============================================================================
-
-function renderCheckoutPage() {
-    renderPage('template-checkout');
-
-    // Populate the summary
-    const summaryContainer = document.getElementById('checkout-summary-container');
-    const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-    const selectedShipping = document.querySelector('input[name="shipping-option"]:checked');
-    const shippingCost = selectedShipping ? parseFloat(selectedShipping.dataset.cost) : 0;
-    const total = subtotal + shippingCost;
-
-    summaryContainer.innerHTML = `
-        <div class="space-y-2 text-lg">
-            <div class="flex justify-between"><span>Subtotal:</span> <span>R$ ${subtotal.toFixed(2).replace('.', ',')}</span></div>
-            <div class="flex justify-between"><span>Frete:</span> <span>R$ ${shippingCost.toFixed(2).replace('.', ',')}</span></div>
-            <hr class="my-2 border-gray-600">
-            <div class="flex justify-between font-bold text-2xl"><span class="text-red-500">Total:</span> <span class="text-red-500">R$ ${total.toFixed(2).replace('.', ',')}</span></div>
-        </div>
-    `;
-
-    // Add CEP auto-fill event listener
-    const cepInput = document.getElementById('cep');
-    cepInput.addEventListener('blur', async (e) => {
-        const cep = e.target.value.replace(/\D/g, '');
-        if (cep.length === 8) {
-            try {
-                const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-                const data = await response.json();
-                if (!data.erro) {
-                    document.getElementById('street').value = data.logradouro;
-                    document.getElementById('locality').value = data.bairro;
-                    document.getElementById('city').value = data.localidade;
-                    document.getElementById('region_code').value = data.uf;
-                    document.getElementById('number').focus();
-                }
-            } catch (error) {
-                console.error("Erro ao buscar CEP:", error);
-            }
-        }
-    });
-
-    document.getElementById('confirm-checkout-btn').addEventListener('click', confirmAndPay);
-}
-
-
 function renderPrivacyPolicyPage() {
     renderPage('template-privacy');
     const contentArea = document.getElementById('privacy-content');
@@ -1648,7 +1494,7 @@ const pageRenderers = {
     'calendario': renderCalendarPage, 'galeria': renderGalleryPage, 'loja': renderShopPage,
     'carrinho': renderCartPage, 'inscricao': renderInscriptionPage, 'login': renderUserLoginPage,
     'signup': renderSignupPage, 'account': renderAccountPage, 'admin-login': renderAdminLoginPage,
-    'privacy': renderPrivacyPolicyPage, 'admin': renderAdminPage, 'checkout': renderCheckoutPage
+    'privacy': renderPrivacyPolicyPage, 'admin': renderAdminPage
 };
 
 function navigateTo(pageId) {
@@ -1885,7 +1731,6 @@ function addEventListeners() {
                 'delete-gallery': () => deleteGalleryImage(id),
                 'open-product-modal': () => openProductModal(id),
                 'delete-product': () => deleteProduct(id),
-        'open-sponsor-modal': () => openSponsorModal(id),
                 'delete-sponsor': () => deleteSponsor(id),
                 'open-order-modal': () => openOrderModal(id),
             };

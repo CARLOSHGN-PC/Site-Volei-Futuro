@@ -63,6 +63,9 @@ let appState = {
     calculatedShipping: [],
     currentAdminSection: 'dashboard',
     freeShippingThreshold: null,
+    sponsors: [],
+    orders: [],
+    privacyPolicy: '',
 };
 
 let cart = [];
@@ -150,6 +153,15 @@ function renderHomePage() {
                 </div>
             </div>`;
     });
+
+    const sponsorsGrid = document.getElementById('sponsors-grid');
+    if (sponsorsGrid) {
+        sponsorsGrid.innerHTML = appState.sponsors.map(sponsor => `
+            <a href="${sponsor.linkUrl}" target="_blank" rel="noopener noreferrer">
+                <img src="${sponsor.logoUrl}" alt="${sponsor.name}" class="h-12 opacity-60 hover:opacity-100 transition duration-300">
+            </a>
+        `).join('');
+    }
 }
 
 function renderAboutPage() {
@@ -420,13 +432,19 @@ async function renderAccountPage() {
             ordersHTML += `
                 <div class="bg-gray-700 p-4 rounded-lg">
                     <div class="flex justify-between items-center mb-2">
-                        <p class="font-bold">Pedido: ${doc.id}</p>
-                        <p class="text-sm text-gray-400">Data: ${orderDate}</p>
+                        <div>
+                            <p class="font-bold">Pedido: ${doc.id}</p>
+                            <p class="text-sm text-gray-400">Data: ${orderDate}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold text-lg text-red-500">R$ ${total}</p>
+                            <p class="text-sm font-semibold">${order.status || 'PENDENTE'}</p>
+                        </div>
                     </div>
                     <ul class="list-disc list-inside text-gray-300 mb-2">
                         ${itemsHTML}
                     </ul>
-                    <p class="text-right font-bold">Total: R$ ${total}</p>
+                    ${order.trackingCode ? `<p class="text-sm mt-2"><strong>Rastreio:</strong> ${order.trackingCode}</p>` : ''}
                 </div>
             `;
         });
@@ -601,6 +619,10 @@ function updateCartQuantity(productId, change) {
         } else {
             updateCartDisplay();
             updateCartBadge();
+            const cepInput = document.getElementById('cep-input');
+            if (cepInput && cepInput.value) {
+                handleCalculateShipping();
+            }
         }
     }
 }
@@ -608,9 +630,14 @@ function updateCartQuantity(productId, change) {
 function removeFromCart(productId) {
     cart = cart.filter(item => item.id !== productId);
     appState.calculatedShipping = []; // Reset shipping on cart change
-    document.getElementById('shipping-options-container').innerHTML = '';
+    const shippingOptionsContainer = document.getElementById('shipping-options-container');
+    if(shippingOptionsContainer) shippingOptionsContainer.innerHTML = '';
     updateCartDisplay();
     updateCartBadge();
+    const cepInput = document.getElementById('cep-input');
+    if (cepInput && cepInput.value) {
+        handleCalculateShipping();
+    }
 }
 
 function showCustomAlert(title, message) {
@@ -693,9 +720,241 @@ function renderAdminSection(section) {
     const renderers = {
         'dashboard': renderAdminDashboard, 'paginas': renderAdminPages, 'noticias': renderAdminNews,
         'calendario': renderAdminCalendar, 'galeria': renderAdminGallery, 'loja': renderAdminShop,
-        'frete-gratis': renderAdminFreeShipping, 'inscricoes': renderAdminRegistrations,
+        'frete-gratis': renderAdminFreeShipping, 'sponsors': renderAdminSponsors,
+        'orders': renderAdminOrders, 'privacy': renderAdminPrivacy, 'inscricoes': renderAdminRegistrations,
     };
     if(renderers[section]) renderers[section]();
+}
+
+function renderAdminPrivacy() {
+    const contentArea = adminContentArea();
+    if (!contentArea) return;
+
+    contentArea.innerHTML = `
+        <h2 class="text-2xl font-bold mb-4">Política de Privacidade</h2>
+        <form id="privacy-policy-form" class="bg-gray-800 p-6 rounded-lg">
+            <div class="mb-4">
+                <label for="privacyPolicyContent" class="block text-sm font-semibold mb-2 text-gray-300">
+                    Conteúdo da Página
+                </label>
+                <textarea id="privacyPolicyContent" name="privacyPolicyContent" rows="20"
+                       class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4">
+${appState.privacyPolicy}
+                </textarea>
+            </div>
+            <div class="text-right">
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Salvar Política</button>
+            </div>
+        </form>
+    `;
+
+    document.getElementById('privacy-policy-form').addEventListener('submit', savePrivacyPolicy);
+}
+
+async function savePrivacyPolicy(e) {
+    e.preventDefault();
+    const content = e.target.privacyPolicyContent.value;
+
+    try {
+        await setDoc(doc(db, `artifacts/${appId}/public/data/pages/privacy`), { content });
+        showCustomAlert('Sucesso!', 'A política de privacidade foi atualizada.');
+    } catch (error) {
+        console.error('Erro ao salvar política de privacidade:', error);
+        showCustomAlert('Erro', 'Não foi possível salvar a política de privacidade.');
+    }
+}
+
+function renderAdminOrders() {
+    const contentArea = adminContentArea();
+    if (!contentArea) return;
+
+    let tableRows = appState.orders.map(order => {
+        const orderDate = order.createdAt.toDate().toLocaleDateString('pt-BR');
+        const total = (order.totalAmount / 100).toFixed(2).replace('.', ',');
+        return `
+            <tr class="border-b border-gray-700">
+                <td class="p-4">${order.referenceId}</td>
+                <td class="p-4">${orderDate}</td>
+                <td class="p-4">${order.userName || order.userEmail}</td>
+                <td class="p-4">R$ ${total}</td>
+                <td class="p-4">${order.status || 'PENDENTE'}</td>
+                <td class="p-4">
+                    <button data-admin-action="open-order-modal" data-id="${order.id}" class="text-green-400 hover:text-green-300">Editar</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    contentArea.innerHTML = `
+        <h2 class="text-2xl font-bold mb-4">Gerenciar Pedidos</h2>
+        <div class="bg-gray-800 rounded-lg overflow-x-auto">
+            <table class="w-full text-left min-w-max">
+                <thead class="bg-gray-700">
+                    <tr>
+                        <th class="p-4">Referência</th>
+                        <th class="p-4">Data</th>
+                        <th class="p-4">Cliente</th>
+                        <th class="p-4">Total</th>
+                        <th class="p-4">Status</th>
+                        <th class="p-4">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>${tableRows}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+function openOrderModal(id) {
+    const order = appState.orders.find(o => o.id === id);
+    if (!order) return;
+
+    const modalContent = `
+        <h2 class="text-2xl font-bold mb-6">Editar Pedido ${order.referenceId}</h2>
+        <form id="order-form">
+            <input type="hidden" name="id" value="${id}">
+            <div class="mb-4">
+                <label for="orderStatus" class="block text-sm font-semibold mb-2 text-gray-300">Status do Pedido</label>
+                <select id="orderStatus" name="orderStatus" class="w-full bg-gray-700 p-2 rounded">
+                    <option value="PENDING" ${order.status === 'PENDING' ? 'selected' : ''}>Pendente</option>
+                    <option value="PROCESSING" ${order.status === 'PROCESSING' ? 'selected' : ''}>Processando</option>
+                    <option value="SHIPPED" ${order.status === 'SHIPPED' ? 'selected' : ''}>Enviado</option>
+                    <option value="DELIVERED" ${order.status === 'DELIVERED' ? 'selected' : ''}>Entregue</option>
+                    <option value="CANCELED" ${order.status === 'CANCELED' ? 'selected' : ''}>Cancelado</option>
+                </select>
+            </div>
+            <div class="mb-6">
+                <label for="trackingCode" class="block text-sm font-semibold mb-2 text-gray-300">Código de Rastreio</label>
+                <input type="text" id="trackingCode" name="trackingCode" class="w-full bg-gray-700 p-2 rounded" value="${order.trackingCode || ''}">
+            </div>
+            <div class="flex justify-end gap-4">
+                <button type="button" data-close-modal="generic-modal" class="bg-gray-600 hover:bg-gray-700 py-2 px-4 rounded">Cancelar</button>
+                <button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Salvar</button>
+            </div>
+        </form>
+    `;
+    openModal('generic-modal', null, modalContent);
+    document.getElementById('order-form').addEventListener('submit', saveOrder);
+}
+
+async function saveOrder(e) {
+    e.preventDefault();
+    const form = e.target;
+    const id = form.id.value;
+    const status = form.orderStatus.value;
+    const trackingCode = form.trackingCode.value;
+
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Salvando...';
+
+    try {
+        await updateDoc(getDocRef('orders', id), { status, trackingCode });
+        closeModal('generic-modal');
+    } catch (error) {
+        console.error('Erro ao salvar pedido:', error);
+        showCustomAlert('Erro', 'Não foi possível salvar as alterações do pedido.');
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Salvar';
+    }
+}
+
+function renderAdminSponsors() {
+    const contentArea = adminContentArea();
+    if (!contentArea) return;
+
+    let tableRows = appState.sponsors.map(sponsor => `
+        <tr class="border-b border-gray-700">
+            <td class="p-4"><img src="${sponsor.logoUrl}" class="h-12 bg-white p-1 rounded"></td>
+            <td class="p-4"><a href="${sponsor.linkUrl}" target="_blank" class="text-blue-400 hover:underline">${sponsor.linkUrl}</a></td>
+            <td class="p-4">
+                <button data-admin-action="delete-sponsor" data-id="${sponsor.id}" class="text-red-500 hover:text-red-400">Excluir</button>
+            </td>
+        </tr>
+    `).join('');
+
+    contentArea.innerHTML = `
+        <h2 class="text-2xl font-bold mb-4">Gerenciar Patrocinadores</h2>
+        <form id="sponsor-form" class="mb-8 bg-gray-800 p-6 rounded-lg">
+            <div class="mb-4">
+                <label for="sponsorName" class="block text-sm font-semibold mb-2 text-gray-300">Nome do Patrocinador</label>
+                <input type="text" id="sponsorName" name="sponsorName" class="w-full bg-gray-700 p-2 rounded" required>
+            </div>
+            <div class="mb-4">
+                <label for="sponsorLink" class="block text-sm font-semibold mb-2 text-gray-300">Link do Site (URL)</label>
+                <input type="url" id="sponsorLink" name="sponsorLink" class="w-full bg-gray-700 p-2 rounded" required>
+            </div>
+            <div class="mb-6">
+                <label class="block mb-2">Logo do Patrocinador</label>
+                <input type="file" name="imageFile" id="imageFile" class="w-full bg-gray-700 p-2 rounded" accept="image/*" required>
+                <div class="mt-4">
+                    <img id="image-preview" src="https://via.placeholder.com/150" alt="Pré-visualização" class="w-32 h-32 object-contain rounded hidden">
+                </div>
+            </div>
+            <div class="text-right">
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Adicionar Patrocinador</button>
+            </div>
+        </form>
+        <div class="bg-gray-800 rounded-lg overflow-x-auto">
+            <table class="w-full text-left min-w-max">
+                <thead class="bg-gray-700"><tr><th class="p-4">Logo</th><th class="p-4">Link</th><th class="p-4">Ações</th></tr></thead>
+                <tbody>${tableRows}</tbody>
+            </table>
+        </div>
+    `;
+
+    const imageFileInput = document.getElementById('imageFile');
+    const imagePreview = document.getElementById('image-preview');
+    imageFileInput.addEventListener('change', () => {
+        const file = imageFileInput.files[0];
+        if (file) {
+            imagePreview.classList.remove('hidden');
+            const reader = new FileReader();
+            reader.onload = (e) => { imagePreview.src = e.target.result; };
+            reader.readAsDataURL(file);
+        } else {
+            imagePreview.classList.add('hidden');
+        }
+    });
+    document.getElementById('sponsor-form').addEventListener('submit', saveSponsor);
+}
+
+async function saveSponsor(e) {
+    e.preventDefault();
+    const form = e.target;
+    const sponsorName = form.sponsorName.value;
+    const sponsorLink = form.sponsorLink.value;
+    const imageFile = form.imageFile.files[0];
+
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Salvando...';
+
+    const logoUrl = await uploadImage(imageFile);
+    if (!logoUrl) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Adicionar Patrocinador';
+        return;
+    }
+
+    try {
+        await addDoc(getCollectionRef('sponsors'), { name: sponsorName, linkUrl: sponsorLink, logoUrl: logoUrl });
+        form.reset();
+        document.getElementById('image-preview').classList.add('hidden');
+    } catch (error) {
+        console.error('Erro ao salvar patrocinador:', error);
+        showCustomAlert('Erro', 'Não foi possível salvar o patrocinador.');
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Adicionar Patrocinador';
+    }
+}
+
+async function deleteSponsor(id) {
+    if (confirm('Tem certeza que deseja excluir este patrocinador?')) {
+        await deleteDoc(getDocRef('sponsors', id));
+    }
 }
 
 function renderAdminFreeShipping() {
@@ -1222,11 +1481,20 @@ async function deleteProduct(id) {
 // ===============================================================================
 // ROTEAMENTO E NAVEGAÇÃO
 // ===============================================================================
+function renderPrivacyPolicyPage() {
+    renderPage('template-privacy');
+    const contentArea = document.getElementById('privacy-content');
+    if (contentArea) {
+        contentArea.innerHTML = appState.privacyPolicy || '<p>Política de Privacidade ainda não definida.</p>';
+    }
+}
+
 const pageRenderers = {
     'home': renderHomePage, 'sobre': renderAboutPage, 'noticias': renderNewsPage,
     'calendario': renderCalendarPage, 'galeria': renderGalleryPage, 'loja': renderShopPage,
     'carrinho': renderCartPage, 'inscricao': renderInscriptionPage, 'login': renderUserLoginPage,
-    'signup': renderSignupPage, 'account': renderAccountPage, 'admin-login': renderAdminLoginPage, 'admin': renderAdminPage
+    'signup': renderSignupPage, 'account': renderAccountPage, 'admin-login': renderAdminLoginPage,
+    'privacy': renderPrivacyPolicyPage, 'admin': renderAdminPage
 };
 
 function navigateTo(pageId) {
@@ -1283,7 +1551,7 @@ function closeModal(modalId) {
 }
 
 function setupRealtimeListeners() {
-    const collections = ['calendarEvents', 'products', 'news', 'registrations', 'galleryImages'];
+    const collections = ['calendarEvents', 'products', 'news', 'registrations', 'galleryImages', 'sponsors', 'orders'];
     collections.forEach(col => {
         onSnapshot(getCollectionRef(col), snapshot => {
             appState[col] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -1309,6 +1577,12 @@ function setupRealtimeListeners() {
     onSnapshot(doc(db, `artifacts/${appId}/public/data/config/freeShipping`), doc => {
         appState.freeShippingThreshold = doc.exists() ? doc.data().threshold : null;
     }, error => console.error("Erro no listener da config de frete grátis: ", error));
+
+    onSnapshot(doc(db, `artifacts/${appId}/public/data/pages/privacy`), doc => {
+        appState.privacyPolicy = doc.exists() ? doc.data().content : '';
+        const currentPage = window.location.hash.substring(1) || 'home';
+        if(currentPage === 'privacy' && appRoot.innerHTML) renderPrivacyPolicyPage();
+    }, error => console.error("Erro no listener da página de privacidade: ", error));
 }
 
 function handleUserAuthState(user) {
@@ -1457,6 +1731,8 @@ function addEventListeners() {
                 'delete-gallery': () => deleteGalleryImage(id),
                 'open-product-modal': () => openProductModal(id),
                 'delete-product': () => deleteProduct(id),
+                'delete-sponsor': () => deleteSponsor(id),
+                'open-order-modal': () => openOrderModal(id),
             };
             if (actions[adminAction]) {
                 actions[adminAction]();

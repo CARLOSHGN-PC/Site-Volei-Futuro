@@ -269,24 +269,24 @@ function renderInscriptionPage() {
     }
 }
 
-async function handleLoginSubmit(e) {
+async function handleUserLoginSubmit(e) {
     e.preventDefault();
     const email = e.target.email.value;
     const password = e.target.password.value;
     try {
         await signInWithEmailAndPassword(auth, email, password);
-        navigateTo('admin');
+        navigateTo('account'); // Redirect to account page on successful login
     } catch (error) {
         console.error("Erro de login: ", error.code);
             showCustomAlert('Erro de Login', 'O e-mail ou a senha que você digitou estão incorretos. Por favor, verifique e tente novamente.');
     }
 }
 
-function renderLoginPage() {
+function renderUserLoginPage() {
     renderPage('template-login');
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
-        loginForm.addEventListener('submit', handleLoginSubmit);
+        loginForm.addEventListener('submit', handleUserLoginSubmit);
     }
 }
 
@@ -326,9 +326,32 @@ function renderSignupPage() {
     }
 }
 
+async function handleAdminLoginSubmit(e) {
+    e.preventDefault();
+    const email = e.target.elements['admin-email'].value;
+    const password = e.target.elements['admin-password'].value;
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        // A onAuthStateChanged vai pegar a mudança e redirecionar para o painel de admin
+        navigateTo('admin');
+    } catch (error) {
+        console.error("Erro de login do admin: ", error.code);
+        showCustomAlert('Erro de Login', 'As credenciais de administrador estão incorretas.');
+    }
+}
+
+function renderAdminLoginPage() {
+    renderPage('template-admin-login');
+    const adminLoginForm = document.getElementById('admin-login-form');
+    if (adminLoginForm) {
+        adminLoginForm.addEventListener('submit', handleAdminLoginSubmit);
+    }
+}
+
 function renderAdminPage() {
+    // We will refine this logic in the next step. For now, it might redirect to user login.
     if (!appState.currentUser) {
-        navigateTo('login');
+        navigateTo('admin-login');
         return;
     }
     renderPage('template-admin');
@@ -831,8 +854,8 @@ async function deleteProduct(id) {
 const pageRenderers = {
     'home': renderHomePage, 'sobre': renderAboutPage, 'noticias': renderNewsPage,
     'calendario': renderCalendarPage, 'galeria': renderGalleryPage, 'loja': renderShopPage,
-    'carrinho': renderCartPage, 'inscricao': renderInscriptionPage, 'login': renderLoginPage,
-    'signup': renderSignupPage, 'account': renderAccountPage, 'admin': renderAdminPage
+    'carrinho': renderCartPage, 'inscricao': renderInscriptionPage, 'login': renderUserLoginPage,
+    'signup': renderSignupPage, 'account': renderAccountPage, 'admin-login': renderAdminLoginPage, 'admin': renderAdminPage
 };
 
 function navigateTo(pageId) {
@@ -917,22 +940,17 @@ function handleUserAuthState(user) {
     const userAuthLinks = document.getElementById('user-auth-links');
     const userAccountLinks = document.getElementById('user-account-links');
     const userNameLink = document.getElementById('user-name-link');
-    const adminLoginButton = document.getElementById('admin-login-button');
 
     if (user) {
         appState.currentUser = user;
         userAuthLinks.classList.add('hidden');
         userAccountLinks.classList.remove('hidden');
         userNameLink.textContent = user.displayName || 'Minha Conta';
-        // Hide the round admin login button if a regular user is logged in
-        adminLoginButton.classList.add('hidden');
     } else {
         appState.currentUser = null;
         userAuthLinks.classList.remove('hidden');
         userAccountLinks.classList.add('hidden');
         userNameLink.textContent = '';
-        // Show the admin login button if no user is logged in
-        adminLoginButton.classList.remove('hidden');
     }
 }
 
@@ -947,10 +965,10 @@ function handleInitialPageLoad() {
         }
 
         const initialPage = window.location.hash.substring(1) || 'home';
-        // Reroute admin to admin panel, but don't reroute regular users
-        if (user && user.email === 'admin@example.com' && (initialPage === 'login' || !initialPage)) {
-             navigateTo('admin');
-        } else if (!user && initialPage.startsWith('admin')) {
+
+        // If a logged-out user tries to access a protected page, redirect them.
+        const protectedPages = ['account', 'admin'];
+        if (!user && protectedPages.includes(initialPage)) {
             navigateTo('login');
         } else {
             navigateTo(initialPage);

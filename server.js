@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
 const axios = require('axios');
+const multer = require('multer');
+const FormData = require('form-data');
 // Initialize Firebase Admin SDK
 // The credentials will be loaded from an environment variable
 // which the user will need to set up on Render.
@@ -19,14 +21,44 @@ app.use(cors()); // In a real production environment, you should configure this 
 app.use(express.json());
 app.use(express.static(__dirname)); // Serve static files from the root directory
 
+// Multer setup for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
 // Routes
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
+app.post('/upload-image', upload.single('image'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).send({ success: false, error: 'No image file provided.' });
+    }
+
+    try {
+        const form = new FormData();
+        form.append('image', req.file.buffer, { filename: req.file.originalname });
+
+        const response = await axios.post(`https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`, form, {
+            headers: {
+                ...form.getHeaders()
+            }
+        });
+
+        if (response.data.success) {
+            res.status(200).json({ success: true, data: { url: response.data.data.url } });
+        } else {
+            res.status(500).json({ success: false, error: 'Failed to upload image to hosting service.' });
+        }
+    } catch (error) {
+        console.error('Image upload failed:', error.response ? error.response.data : error.message);
+        res.status(500).json({ success: false, error: `Image upload failed: ${error.message}` });
+    }
+});
+
 app.post('/calculate-shipping', async (req, res) => {
     const { cepDestino, items } = req.body;
-    const FRENET_API_TOKEN = "4692D145RD022R4DCARA04ER34EA62422852";
+    const FRENET_API_TOKEN = process.env.FRENET_API_TOKEN;
 
     if (!cepDestino || !items) {
         return res.status(400).json({ error: 'CEP de destino e itens do carrinho são obrigatórios.' });
@@ -75,10 +107,14 @@ app.post('/calculate-shipping', async (req, res) => {
 });
 
 app.post('/create-checkout', async (req, res) => {
-    const { items, shipping, userId, userEmail, userName } = req.body;
+    const { items, shipping, userId, userEmail, userName, shippingAddress } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Cart items are required.' });
+    }
+
+    if (!shippingAddress) {
+        return res.status(400).json({ error: 'Shipping address is required.' });
     }
 
     const orderItems = items.map(item => ({
@@ -101,11 +137,7 @@ app.post('/create-checkout', async (req, res) => {
         "items": orderItems,
         "shipping": {
             "amount": shippingCost,
-            "address": {
-                "street": "Avenida Brigadeiro Faria Lima", "number": "1384", "complement": "apto 132",
-                "locality": "Jardim Paulistano", "city": "Sao Paulo", "region_code": "SP",
-                "country": "BRA", "postal_code": "01451001"
-            }
+            "address": shippingAddress
         },
         "notification_urls": [],
         "charges": [{

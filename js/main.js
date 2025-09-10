@@ -7,6 +7,8 @@ import {
     getAuth,
     onAuthStateChanged,
     signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    updateProfile,
     sendPasswordResetEmail,
     signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -210,11 +212,11 @@ async function handleInscriptionSubmit(e) {
     try {
         const collectionRef = collection(db, `artifacts/${appId}/public/data/registrations`);
         await addDoc(collectionRef, newRegistration);
-        alert('Inscrição enviada com sucesso!');
+            showCustomAlert('Sucesso!', 'Sua inscrição foi enviada e será avaliada por nossa equipe.');
         form.reset();
     } catch (error) {
         console.error("Erro ao enviar inscrição: ", error);
-        alert('Houve um erro ao enviar sua inscrição. Tente novamente.');
+            showCustomAlert('Erro', 'Houve um problema ao enviar sua inscrição. Por favor, tente novamente mais tarde.');
     }
 }
 
@@ -235,7 +237,7 @@ async function handleLoginSubmit(e) {
         navigateTo('admin');
     } catch (error) {
         console.error("Erro de login: ", error.code);
-        alert('Email ou senha inválidos.');
+            showCustomAlert('Erro de Login', 'O e-mail ou a senha que você digitou estão incorretos. Por favor, verifique e tente novamente.');
     }
 }
 
@@ -244,6 +246,42 @@ function renderLoginPage() {
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
         loginForm.addEventListener('submit', handleLoginSubmit);
+    }
+}
+
+async function handleRegistrationSubmit(e) {
+    e.preventDefault();
+    const name = e.target.name.value;
+    const email = e.target.email.value;
+    const password = e.target.password.value;
+
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, { displayName: name });
+
+        // Force a state change to update the UI
+        appState.currentUser = auth.currentUser;
+        handleUserAuthState(auth.currentUser);
+
+        showCustomAlert('Bem-vindo!', `Sua conta foi criada com sucesso, ${name}.`);
+        navigateTo('home');
+    } catch (error) {
+        console.error("Erro no cadastro: ", error);
+        let message = 'Ocorreu um erro ao criar sua conta. Por favor, tente novamente.';
+        if (error.code === 'auth/email-already-in-use') {
+            message = 'Este e-mail já está em uso. Por favor, tente fazer login ou use um e-mail diferente.';
+        } else if (error.code === 'auth/weak-password') {
+            message = 'Sua senha é muito fraca. Por favor, use pelo menos 6 caracteres.';
+        }
+        showCustomAlert('Erro no Cadastro', message);
+    }
+}
+
+function renderSignupPage() {
+    renderPage('template-signup');
+    const signupForm = document.getElementById('signup-form');
+    if (signupForm) {
+        signupForm.addEventListener('submit', handleRegistrationSubmit);
     }
 }
 
@@ -287,7 +325,7 @@ function addToCart(productId, quantity = 1) {
         cart.push({ ...product, quantity: quantity });
     }
     updateCartBadge();
-    alert(`${product.name} foi adicionado ao carrinho!`);
+    showCustomAlert('Produto Adicionado!', `<b>${product.name}</b> foi adicionado ao seu carrinho de compras.`);
 }
 
 function updateCartBadge() {
@@ -355,13 +393,24 @@ function removeFromCart(productId) {
     updateCartBadge();
 }
 
+function showCustomAlert(title, message) {
+    const contentHTML = `
+        <div class="text-center">
+            <h2 class="text-2xl font-bold mb-4">${title}</h2>
+            <p class="text-gray-300 mb-6">${message}</p>
+            <button data-close-modal="generic-modal" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">OK</button>
+        </div>
+    `;
+    openModal('generic-modal', null, contentHTML);
+}
+
 async function handleCheckout() {
     if (cart.length === 0) {
-        alert("Seu carrinho está vazio!");
+        showCustomAlert("Carrinho Vazio", "Você precisa adicionar itens ao carrinho antes de finalizar a compra.");
         return;
     }
     if (!appState.currentUser) {
-        alert("Você precisa estar logado para finalizar a compra. Redirecionando para a página de login.");
+        showCustomAlert("Login Necessário", "Você precisa estar logado para finalizar a compra. Estamos te redirecionando para a página de login.");
         navigateTo('login');
         return;
     }
@@ -377,7 +426,7 @@ async function handleCheckout() {
         }
     } catch (error) {
         console.error("Erro ao finalizar a compra: ", error);
-        alert("Ocorreu um erro ao tentar finalizar a compra. Por favor, tente novamente.");
+        showCustomAlert("Erro no Checkout", "Ocorreu um erro ao tentar se comunicar com o sistema de pagamento. Por favor, tente novamente mais tarde.");
     }
 }
 
@@ -583,10 +632,10 @@ async function handleForgotPassword(e) {
     const email = e.target.email.value;
     try {
         await sendPasswordResetEmail(auth, email);
-        alert('Um link de redefinição de senha foi enviado para o seu e-mail.');
+        showCustomAlert('Link Enviado', 'Se o e-mail estiver correto, você receberá um link para redefinir sua senha em breve.');
     } catch (error) {
         console.error("Erro ao enviar email de redefinição: ", error);
-        alert('Houve um erro. Verifique o e-mail digitado.');
+        showCustomAlert('Erro', 'Houve um problema ao enviar o e-mail de redefinição. Verifique o endereço digitado e tente novamente.');
     } finally {
         closeModal('generic-modal');
     }
@@ -601,7 +650,7 @@ async function saveHomePageContent(e) {
         backgroundVideoUrl: formData.get('backgroundVideoUrl'),
     };
     await setDoc(doc(db, `artifacts/${appId}/public/data/pages/home`), content, { merge: true });
-    alert('Página Home atualizada com sucesso!');
+    showCustomAlert('Sucesso', 'O conteúdo da Página Home foi salvo.');
 }
 
 async function saveAboutPageContent(e) {
@@ -611,8 +660,8 @@ async function saveAboutPageContent(e) {
     const content = {
         mission: missionText.split('\n\n').map(p => `<p class="${p === missionText.split('\n\n').slice(-1)[0] ? '' : 'mb-4'}">${p}</p>`).join('')
     };
-    await setDoc(doc(db, `artifacts/${appId}/public/data/pages/about`), content);
-    alert('Página Sobre atualizada com sucesso!');
+    await setDoc(doc(db, `artifacts/${appId}/public/data/pages/about`), content, { merge: true });
+    showCustomAlert('Sucesso', 'O conteúdo da Página Sobre foi salvo.');
 }
 
 async function saveNews(e) {
@@ -683,7 +732,7 @@ const pageRenderers = {
     'home': renderHomePage, 'sobre': renderAboutPage, 'noticias': renderNewsPage,
     'calendario': renderCalendarPage, 'galeria': renderGalleryPage, 'loja': renderShopPage,
     'carrinho': renderCartPage, 'inscricao': renderInscriptionPage, 'login': renderLoginPage,
-    'admin': renderAdminPage
+    'signup': renderSignupPage, 'admin': renderAdminPage
 };
 
 function navigateTo(pageId) {
@@ -764,18 +813,43 @@ function setupRealtimeListeners() {
     }, error => console.error("Erro no listener da página about: ", error));
 }
 
+function handleUserAuthState(user) {
+    const userAuthLinks = document.getElementById('user-auth-links');
+    const userAccountLinks = document.getElementById('user-account-links');
+    const userNameEl = document.getElementById('user-name');
+    const adminLoginButton = document.getElementById('admin-login-button');
+
+    if (user) {
+        appState.currentUser = user;
+        userAuthLinks.classList.add('hidden');
+        userAccountLinks.classList.remove('hidden');
+        userNameEl.textContent = user.displayName || 'Usuário';
+        // Hide the round admin login button if a regular user is logged in
+        adminLoginButton.classList.add('hidden');
+    } else {
+        appState.currentUser = null;
+        userAuthLinks.classList.remove('hidden');
+        userAccountLinks.classList.add('hidden');
+        userNameEl.textContent = '';
+        // Show the admin login button if no user is logged in
+        adminLoginButton.classList.remove('hidden');
+    }
+}
+
 function handleInitialPageLoad() {
     updateCartBadge();
     let listenersAttached = false;
     onAuthStateChanged(auth, user => {
-        appState.currentUser = user;
+        handleUserAuthState(user);
         if (!listenersAttached) {
             setupRealtimeListeners();
             listenersAttached = true;
         }
+
         const initialPage = window.location.hash.substring(1) || 'home';
-        if (user && (initialPage === 'login' || !initialPage)) {
-            navigateTo('admin');
+        // Reroute admin to admin panel, but don't reroute regular users
+        if (user && user.email === 'admin@example.com' && (initialPage === 'login' || !initialPage)) {
+             navigateTo('admin');
         } else if (!user && initialPage.startsWith('admin')) {
             navigateTo('login');
         } else {
@@ -855,6 +929,12 @@ function addEventListeners() {
         }
 
         // Admin Actions
+        const logoutButton = e.target.closest('#logout-button-user');
+        if (logoutButton) {
+            signOut(auth);
+            return;
+        }
+
         const adminButton = e.target.closest('[data-admin-action]');
         if (adminButton) {
             const { adminAction, id } = adminButton.dataset;

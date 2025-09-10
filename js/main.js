@@ -20,6 +20,7 @@ import {
     updateDoc,
     deleteDoc
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -36,6 +37,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const functions = getFunctions(app, 'southamerica-east1'); // São Paulo
 const analytics = getAnalytics(app);
 const appId = firebaseConfig.projectId;
 
@@ -76,6 +78,15 @@ function renderHomePage() {
     renderPage('template-home');
     document.getElementById('home-headline').innerHTML = appState.pageContent.home.headline || "Carregando...";
     document.getElementById('home-subheadline').innerHTML = appState.pageContent.home.subheadline || "";
+
+    const videoElement = document.getElementById('hero-video-element');
+    if (videoElement && appState.pageContent.home.backgroundVideoUrl) {
+        const sourceElement = videoElement.querySelector('source');
+        if (sourceElement) {
+            sourceElement.src = appState.pageContent.home.backgroundVideoUrl;
+            videoElement.load(); // Reload the video with the new source
+        }
+    }
 
     const newsGrid = document.getElementById('home-news-grid');
     if (!newsGrid) return;
@@ -344,6 +355,32 @@ function removeFromCart(productId) {
     updateCartBadge();
 }
 
+async function handleCheckout() {
+    if (cart.length === 0) {
+        alert("Seu carrinho está vazio!");
+        return;
+    }
+    if (!appState.currentUser) {
+        alert("Você precisa estar logado para finalizar a compra. Redirecionando para a página de login.");
+        navigateTo('login');
+        return;
+    }
+
+    try {
+        const createCheckout = httpsCallable(functions, 'createPagSeguroCheckout');
+        const result = await createCheckout({ items: cart });
+
+        if (result.data && result.data.checkoutUrl) {
+            window.location.href = result.data.checkoutUrl;
+        } else {
+            throw new Error("URL de checkout não recebida.");
+        }
+    } catch (error) {
+        console.error("Erro ao finalizar a compra: ", error);
+        alert("Ocorreu um erro ao tentar finalizar a compra. Por favor, tente novamente.");
+    }
+}
+
 // ===============================================================================
 // ADMIN MODALS E LÓGICA DE DADOS (Firestore)
 // ===============================================================================
@@ -382,6 +419,7 @@ function renderAdminPages() {
                 <form id="home-page-form">
                     <div class="mb-4"><label class="block mb-2">Título Principal</label><textarea name="headline" rows="2" class="w-full bg-gray-700 p-2 rounded">${(appState.pageContent.home.headline || '').replace(/<br>/g, "\n")}</textarea></div>
                     <div class="mb-4"><label class="block mb-2">Subtítulo</label><textarea name="subheadline" rows="3" class="w-full bg-gray-700 p-2 rounded">${appState.pageContent.home.subheadline || ''}</textarea></div>
+                        <div class="mb-4"><label class="block mb-2">URL do Vídeo de Fundo</label><input type="url" name="backgroundVideoUrl" class="w-full bg-gray-700 p-2 rounded" value="${appState.pageContent.home.backgroundVideoUrl || ''}"></div>
                     <div class="text-right"><button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Salvar Home</button></div>
                 </form>
             </div>
@@ -560,8 +598,9 @@ async function saveHomePageContent(e) {
     const content = {
         headline: formData.get('headline').replace(/\n/g, "<br>"),
         subheadline: formData.get('subheadline'),
+        backgroundVideoUrl: formData.get('backgroundVideoUrl'),
     };
-    await setDoc(doc(db, `artifacts/${appId}/public/data/pages/home`), content);
+    await setDoc(doc(db, `artifacts/${appId}/public/data/pages/home`), content, { merge: true });
     alert('Página Home atualizada com sucesso!');
 }
 
@@ -804,7 +843,7 @@ function addEventListeners() {
         }
         const checkoutButton = e.target.closest('[data-checkout]');
         if (checkoutButton) {
-            alert('Obrigado por sua compra! (Simulação)');
+            handleCheckout();
             return;
         }
 

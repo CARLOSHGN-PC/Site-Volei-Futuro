@@ -444,7 +444,7 @@ async function renderAccountPage() {
                     <ul class="list-disc list-inside text-gray-300 mb-2">
                         ${itemsHTML}
                     </ul>
-                    ${order.trackingCode ? `<p class="text-sm mt-2"><strong>Rastreio:</strong> ${order.trackingCode}</p>` : ''}
+                    ${order.trackingCode ? `<p class="text-sm mt-2"><strong>Rastreio:</strong> <a href="https://www.google.com/search?q=${order.trackingCode}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">${order.trackingCode}</a></p>` : ''}
                 </div>
             `;
         });
@@ -471,6 +471,12 @@ function addToCart(productId, quantity = 1) {
     }
     updateCartBadge();
     showCustomAlert('Produto Adicionado!', `<b>${product.name}</b> foi adicionado ao seu carrinho de compras.`);
+
+    // Recalculate shipping if on cart page and CEP is filled
+    const cepInput = document.getElementById('cep-input');
+    if (cepInput && cepInput.value) {
+        handleCalculateShipping();
+    }
 }
 
 function updateCartBadge() {
@@ -867,87 +873,130 @@ function renderAdminSponsors() {
     let tableRows = appState.sponsors.map(sponsor => `
         <tr class="border-b border-gray-700">
             <td class="p-4"><img src="${sponsor.logoUrl}" class="h-12 bg-white p-1 rounded"></td>
+            <td class="p-4">${sponsor.name}</td>
             <td class="p-4"><a href="${sponsor.linkUrl}" target="_blank" class="text-blue-400 hover:underline">${sponsor.linkUrl}</a></td>
-            <td class="p-4">
+            <td class="p-4 whitespace-nowrap">
+                <button data-admin-action="open-sponsor-modal" data-id="${sponsor.id}" class="text-green-400 hover:text-green-300 mr-4">Editar</button>
                 <button data-admin-action="delete-sponsor" data-id="${sponsor.id}" class="text-red-500 hover:text-red-400">Excluir</button>
             </td>
         </tr>
     `).join('');
 
     contentArea.innerHTML = `
-        <h2 class="text-2xl font-bold mb-4">Gerenciar Patrocinadores</h2>
-        <form id="sponsor-form" class="mb-8 bg-gray-800 p-6 rounded-lg">
-            <div class="mb-4">
-                <label for="sponsorName" class="block text-sm font-semibold mb-2 text-gray-300">Nome do Patrocinador</label>
-                <input type="text" id="sponsorName" name="sponsorName" class="w-full bg-gray-700 p-2 rounded" required>
-            </div>
-            <div class="mb-4">
-                <label for="sponsorLink" class="block text-sm font-semibold mb-2 text-gray-300">Link do Site (URL)</label>
-                <input type="url" id="sponsorLink" name="sponsorLink" class="w-full bg-gray-700 p-2 rounded" required>
-            </div>
-            <div class="mb-6">
-                <label class="block mb-2">Logo do Patrocinador</label>
-                <input type="file" name="imageFile" id="imageFile" class="w-full bg-gray-700 p-2 rounded" accept="image/*" required>
-                <div class="mt-4">
-                    <img id="image-preview" src="https://via.placeholder.com/150" alt="Pré-visualização" class="w-32 h-32 object-contain rounded hidden">
-                </div>
-            </div>
-            <div class="text-right">
-                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Adicionar Patrocinador</button>
-            </div>
-        </form>
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold">Gerenciar Patrocinadores</h2>
+            <button data-admin-action="open-sponsor-modal" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Novo Patrocinador</button>
+        </div>
         <div class="bg-gray-800 rounded-lg overflow-x-auto">
             <table class="w-full text-left min-w-max">
-                <thead class="bg-gray-700"><tr><th class="p-4">Logo</th><th class="p-4">Link</th><th class="p-4">Ações</th></tr></thead>
+                <thead class="bg-gray-700">
+                    <tr>
+                        <th class="p-4">Logo</th>
+                        <th class="p-4">Nome</th>
+                        <th class="p-4">Link</th>
+                        <th class="p-4">Ações</th>
+                    </tr>
+                </thead>
                 <tbody>${tableRows}</tbody>
             </table>
         </div>
     `;
+}
 
-    const imageFileInput = document.getElementById('imageFile');
-    const imagePreview = document.getElementById('image-preview');
+function openSponsorModal(id = null) {
+    const sponsor = id ? appState.sponsors.find(s => s.id === id) : null;
+    const modalContent = `
+        <h2 class="text-2xl font-bold mb-6">${id ? 'Editar' : 'Novo'} Patrocinador</h2>
+        <form id="sponsor-form-modal">
+            <input type="hidden" name="id" value="${id || ''}">
+            <input type="hidden" name="existingImageUrl" value="${sponsor?.logoUrl || ''}">
+            <div class="mb-4">
+                <label class="block mb-2">Nome do Patrocinador</label>
+                <input type="text" name="sponsorName" class="w-full bg-gray-700 p-2 rounded" value="${sponsor?.name || ''}" required>
+            </div>
+            <div class="mb-4">
+                <label class="block mb-2">Link do Site (URL)</label>
+                <input type="url" name="sponsorLink" class="w-full bg-gray-700 p-2 rounded" value="${sponsor?.linkUrl || ''}" required>
+            </div>
+            <div class="mb-6">
+                <label class="block mb-2">Logo do Patrocinador</label>
+                <input type="file" name="imageFile" id="imageFileModal" class="w-full bg-gray-700 p-2 rounded" accept="image/*">
+                <div class="mt-4">
+                    <img id="image-preview-modal" src="${sponsor?.logoUrl || 'https://via.placeholder.com/150'}" alt="Pré-visualização" class="w-32 h-32 object-contain rounded bg-white p-1">
+                </div>
+            </div>
+            <div class="flex justify-end gap-4">
+                <button type="button" data-close-modal="generic-modal" class="bg-gray-600 hover:bg-gray-700 py-2 px-4 rounded">Cancelar</button>
+                <button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Salvar</button>
+            </div>
+        </form>
+    `;
+    openModal('generic-modal', null, modalContent);
+
+    const imageFileInput = document.getElementById('imageFileModal');
+    const imagePreview = document.getElementById('image-preview-modal');
+
     imageFileInput.addEventListener('change', () => {
         const file = imageFileInput.files[0];
         if (file) {
-            imagePreview.classList.remove('hidden');
             const reader = new FileReader();
-            reader.onload = (e) => { imagePreview.src = e.target.result; };
+            reader.onload = (e) => {
+                imagePreview.src = e.target.result;
+            };
             reader.readAsDataURL(file);
-        } else {
-            imagePreview.classList.add('hidden');
         }
     });
-    document.getElementById('sponsor-form').addEventListener('submit', saveSponsor);
+
+    document.getElementById('sponsor-form-modal').addEventListener('submit', saveSponsor);
 }
 
 async function saveSponsor(e) {
     e.preventDefault();
     const form = e.target;
-    const sponsorName = form.sponsorName.value;
-    const sponsorLink = form.sponsorLink.value;
-    const imageFile = form.imageFile.files[0];
+    const formData = new FormData(form);
+    const id = formData.get('id');
+    const imageFile = form.querySelector('[name="imageFile"]').files[0];
+    const existingImageUrl = formData.get('existingImageUrl');
 
     const submitButton = form.querySelector('button[type="submit"]');
     submitButton.disabled = true;
     submitButton.textContent = 'Salvando...';
 
-    const logoUrl = await uploadImage(imageFile);
-    if (!logoUrl) {
-        submitButton.disabled = false;
-        submitButton.textContent = 'Adicionar Patrocinador';
-        return;
+    let logoUrl = existingImageUrl;
+
+    if (imageFile && imageFile.size > 0) {
+        logoUrl = await uploadImage(imageFile);
+        if (!logoUrl) { // uploadImage shows its own alert
+            submitButton.disabled = false;
+            submitButton.textContent = 'Salvar';
+            return;
+        }
     }
 
+    const sponsorData = {
+        name: formData.get('sponsorName'),
+        linkUrl: formData.get('sponsorLink'),
+        logoUrl: logoUrl
+    };
+
     try {
-        await addDoc(getCollectionRef('sponsors'), { name: sponsorName, linkUrl: sponsorLink, logoUrl: logoUrl });
-        form.reset();
-        document.getElementById('image-preview').classList.add('hidden');
+        if (id) {
+            await updateDoc(getDocRef('sponsors', id), sponsorData);
+        } else {
+            if (!logoUrl) {
+                 showCustomAlert('Erro', 'É necessário enviar um logo para adicionar um novo patrocinador.');
+                 submitButton.disabled = false;
+                 submitButton.textContent = 'Salvar';
+                 return;
+            }
+            await addDoc(getCollectionRef('sponsors'), sponsorData);
+        }
+        closeModal('generic-modal');
     } catch (error) {
         console.error('Erro ao salvar patrocinador:', error);
         showCustomAlert('Erro', 'Não foi possível salvar o patrocinador.');
-    } finally {
         submitButton.disabled = false;
-        submitButton.textContent = 'Adicionar Patrocinador';
+        submitButton.textContent = 'Salvar';
     }
 }
 
@@ -1731,6 +1780,7 @@ function addEventListeners() {
                 'delete-gallery': () => deleteGalleryImage(id),
                 'open-product-modal': () => openProductModal(id),
                 'delete-product': () => deleteProduct(id),
+                'open-sponsor-modal': () => openSponsorModal(id),
                 'delete-sponsor': () => deleteSponsor(id),
                 'open-order-modal': () => openOrderModal(id),
             };

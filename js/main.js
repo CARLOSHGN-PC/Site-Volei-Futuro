@@ -60,6 +60,8 @@ let appState = {
     galleryImages: [],
     shipping_options: [],
     currentUser: null,
+    calculatedShipping: [],
+    currentAdminSection: 'dashboard',
 };
 
 let cart = [];
@@ -350,14 +352,13 @@ function renderAdminLoginPage() {
 }
 
 function renderAdminPage() {
-    // We will refine this logic in the next step. For now, it might redirect to user login.
     if (!appState.currentUser) {
         navigateTo('admin-login');
         return;
     }
     renderPage('template-admin');
     const adminNav = document.getElementById('admin-nav');
-    if(adminNav) {
+    if (adminNav) {
         adminNav.addEventListener('click', (e) => {
             const link = e.target.closest('.admin-nav-link');
             if (link && link.dataset.section) {
@@ -373,7 +374,8 @@ function renderAdminPage() {
             navigateTo('home');
         });
     }
-    renderAdminSection('dashboard');
+    // Render the last active section or default to dashboard
+    renderAdminSection(appState.currentAdminSection || 'dashboard');
 }
 
 async function renderAccountPage() {
@@ -469,8 +471,10 @@ function updateCartDisplay() {
     if (cart.length === 0) {
         container.innerHTML = '<p class="text-center text-gray-400">Seu carrinho está vazio.</p>';
         summaryContainer.innerHTML = '';
+        document.getElementById('shipping-calculator').style.display = 'none';
         return;
     }
+     document.getElementById('shipping-calculator').style.display = 'block';
 
     container.innerHTML = cart.map(item => `
         <div class="flex items-center justify-between bg-gray-800 p-4 rounded-lg mb-4 flex-wrap">
@@ -492,35 +496,66 @@ function updateCartDisplay() {
             </div>
         </div>`).join('');
 
-    // Shipping Options Section
-    let shippingHTML = '<h3 class="text-xl font-bold mt-8 mb-4">Opções de Frete</h3>';
-    if (appState.shipping_options && appState.shipping_options.length > 0) {
-        shippingHTML += appState.shipping_options.map((opt, index) => `
-            <div class="flex items-center justify-between bg-gray-800 p-4 rounded-lg mb-2">
-                <label for="shipping-${opt.id}" class="flex-grow cursor-pointer">
-                    <input type="radio" id="shipping-${opt.id}" name="shipping-option" value="${opt.id}" data-cost="${opt.cost}" class="mr-2" ${index === 0 ? 'checked' : ''}>
-                    <span>${opt.name}</span>
-                </label>
-                <span class="font-semibold">R$ ${opt.cost.toFixed(2).replace('.', ',')}</span>
-            </div>
-        `).join('');
-    } else {
-        shippingHTML += '<p class="text-gray-400">Nenhuma opção de frete disponível.</p>';
-    }
-    // Inject shipping options right after the cart items
-    if (!document.getElementById('shipping-options-container')) {
-        container.insertAdjacentHTML('afterend', `<div id="shipping-options-container">${shippingHTML}</div>`);
-    } else {
-        document.getElementById('shipping-options-container').innerHTML = shippingHTML;
-    }
-
     updateCartSummary();
-
-    // Add event listener to shipping radio buttons
-    document.querySelectorAll('input[name="shipping-option"]').forEach(radio => {
-        radio.addEventListener('change', updateCartSummary);
-    });
 }
+
+async function handleCalculateShipping() {
+    const cepInput = document.getElementById('cep-input');
+    const cep = cepInput.value.replace(/\D/g, ''); // Remove non-digit characters
+    if (cep.length !== 8) {
+        showCustomAlert('Erro', 'Por favor, digite um CEP válido com 8 dígitos.');
+        return;
+    }
+
+    const shippingOptionsContainer = document.getElementById('shipping-options-container');
+    shippingOptionsContainer.innerHTML = '<p class="text-gray-400">Calculando...</p>';
+
+    try {
+        const response = await fetch('/calculate-shipping', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cepDestino: cep })
+        });
+
+        if (!response.ok) {
+            throw new Error('Não foi possível calcular o frete. Verifique o CEP e tente novamente.');
+        }
+
+        const data = await response.json();
+        appState.calculatedShipping = data;
+
+        if (!data || data.length === 0 || data.every(opt => opt.Valor === '0,00')) {
+             shippingOptionsContainer.innerHTML = '<p class="text-red-500">Nenhuma opção de frete encontrada para o CEP informado.</p>';
+             return;
+        }
+
+        let shippingHTML = data.map((opt, index) => {
+             const serviceName = opt.Codigo === '04014' ? 'SEDEX' : opt.Codigo === '04510' ? 'PAC' : 'Correios';
+             return `
+                <div class="flex items-center justify-between bg-gray-700 p-4 rounded-lg mb-2">
+                    <label for="shipping-${opt.Codigo}" class="flex-grow cursor-pointer">
+                        <input type="radio" id="shipping-${opt.Codigo}" name="shipping-option" value="${opt.Codigo}" data-cost="${opt.Valor.replace(',', '.')}" class="mr-2" ${index === 0 ? 'checked' : ''}>
+                        <span>${serviceName} - ${opt.PrazoEntrega} dias</span>
+                    </label>
+                    <span class="font-semibold">R$ ${opt.Valor}</span>
+                </div>
+            `
+        }).join('');
+
+        shippingOptionsContainer.innerHTML = shippingHTML;
+
+        document.querySelectorAll('input[name="shipping-option"]').forEach(radio => {
+            radio.addEventListener('change', updateCartSummary);
+        });
+
+        updateCartSummary();
+
+    } catch (error) {
+        console.error('Erro ao calcular frete:', error);
+        shippingOptionsContainer.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+    }
+}
+
 
 function updateCartSummary() {
     const summaryContainer = document.getElementById('cart-summary');
@@ -562,6 +597,8 @@ function updateCartQuantity(productId, change) {
 
 function removeFromCart(productId) {
     cart = cart.filter(item => item.id !== productId);
+    appState.calculatedShipping = []; // Reset shipping on cart change
+    document.getElementById('shipping-options-container').innerHTML = '';
     updateCartDisplay();
     updateCartBadge();
 }
@@ -589,7 +626,7 @@ async function handleCheckout() {
     }
 
     const selectedShipping = document.querySelector('input[name="shipping-option"]:checked');
-    if (!selectedShipping && appState.shipping_options.length > 0) {
+    if (!selectedShipping && appState.calculatedShipping.length > 0) {
         showCustomAlert("Frete Necessário", "Por favor, selecione uma opção de frete.");
         return;
     }
@@ -600,9 +637,6 @@ async function handleCheckout() {
     } : null;
 
     try {
-        // The URL will be http://localhost:3000 for local dev,
-        // and the public Render URL in production.
-        // For now, we'll hardcode the relative path.
         const response = await fetch('/create-checkout', {
             method: 'POST',
             headers: {
@@ -640,81 +674,18 @@ async function handleCheckout() {
 const adminContentArea = () => document.getElementById('admin-content-area');
 
 function renderAdminSection(section) {
+    appState.currentAdminSection = section;
     document.querySelectorAll('.admin-nav-link').forEach(link => link.classList.remove('bg-red-600', 'text-white'));
-    document.querySelector(`.admin-nav-link[data-section="${section}"]`).classList.add('bg-red-600', 'text-white');
+    const activeLink = document.querySelector(`.admin-nav-link[data-section="${section}"]`);
+    if (activeLink) {
+        activeLink.classList.add('bg-red-600', 'text-white');
+    }
     const renderers = {
         'dashboard': renderAdminDashboard, 'paginas': renderAdminPages, 'noticias': renderAdminNews,
         'calendario': renderAdminCalendar, 'galeria': renderAdminGallery, 'loja': renderAdminShop,
-        'frete': renderAdminShipping, 'inscricoes': renderAdminRegistrations,
+        'inscricoes': renderAdminRegistrations,
     };
     if(renderers[section]) renderers[section]();
-}
-
-function renderAdminShipping() {
-    const contentArea = adminContentArea();
-    if (!contentArea) return;
-
-    contentArea.innerHTML = `
-        <h2 class="text-2xl font-bold mb-4">Gerenciar Opções de Frete</h2>
-        <form id="shipping-form" class="mb-8 bg-gray-800 p-4 rounded-lg flex gap-4 items-end">
-            <div class="flex-grow">
-                <label for="shippingName" class="block text-sm font-semibold mb-2 text-gray-300">Nome da Opção (ex: SEDEX)</label>
-                <input type="text" id="shippingName" name="shippingName" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" required>
-            </div>
-            <div class="flex-grow">
-                <label for="shippingCost" class="block text-sm font-semibold mb-2 text-gray-300">Custo (ex: 25.50)</label>
-                <input type="number" step="0.01" id="shippingCost" name="shippingCost" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" required>
-            </div>
-            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Adicionar Opção</button>
-        </form>
-        <div id="shipping-options-table" class="bg-gray-800 rounded-lg overflow-x-auto">
-            <!-- Tabela será preenchida aqui -->
-        </div>
-    `;
-
-    populateShippingTable();
-    document.getElementById('shipping-form').addEventListener('submit', saveShippingOption);
-}
-
-function populateShippingTable() {
-    const tableContainer = document.getElementById('shipping-options-table');
-    if (!tableContainer) return;
-
-    let tableHTML = `<table class="w-full text-left min-w-max">
-        <thead class="bg-gray-700"><tr><th class="p-4">Nome</th><th class="p-4">Custo</th><th class="p-4">Ações</th></tr></thead>
-        <tbody>`;
-
-    if (appState.shipping_options && appState.shipping_options.length > 0) {
-        appState.shipping_options.forEach(option => {
-            tableHTML += `<tr class="border-b border-gray-700">
-                <td class="p-4">${option.name}</td>
-                <td class="p-4">R$ ${option.cost.toFixed(2).replace('.', ',')}</td>
-                <td class="p-4"><button data-admin-action="delete-shipping" data-id="${option.id}" class="text-red-500 hover:text-red-400">Excluir</button></td>
-            </tr>`;
-        });
-    } else {
-        tableHTML += '<tr><td colspan="3" class="p-4 text-center text-gray-400">Nenhuma opção de frete cadastrada.</td></tr>';
-    }
-
-    tableHTML += '</tbody></table>';
-    tableContainer.innerHTML = tableHTML;
-}
-
-async function saveShippingOption(e) {
-    e.preventDefault();
-    const name = e.target.shippingName.value;
-    const cost = parseFloat(e.target.shippingCost.value);
-
-    if (name && !isNaN(cost)) {
-        await addDoc(getCollectionRef('shipping_options'), { name, cost });
-        e.target.reset();
-    }
-}
-
-async function deleteShippingOption(id) {
-    if (confirm('Tem certeza que deseja excluir esta opção de frete?')) {
-        await deleteDoc(getDocRef('shipping_options', id));
-    }
 }
 
 function renderAdminDashboard() {
@@ -787,19 +758,40 @@ function renderAdminGallery() {
     const contentArea = adminContentArea();
     if (contentArea) contentArea.innerHTML = `
         <h2 class="text-2xl font-bold mb-4">Gerenciar Galeria</h2>
-        <form id="gallery-form" class="mb-8 bg-gray-800 p-4 rounded-lg flex gap-4 items-end"><div class="flex-grow">
-            <label for="imageUrl" class="block text-sm font-semibold mb-2 text-gray-300">URL da Nova Imagem</label>
-            <input type="url" id="imageUrl" name="imageUrl" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" placeholder="https://exemplo.com/imagem.jpg" required>
-            <small class="text-gray-400 mt-1 block">Em um site real, aqui seria um botão de upload de arquivo.</small></div>
-            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Adicionar Foto</button></form>
+        <form id="gallery-form" class="mb-8 bg-gray-800 p-4 rounded-lg">
+            <label for="imageFile" class="block text-sm font-semibold mb-2 text-gray-300">Nova Imagem</label>
+            <div class="flex gap-4 items-start">
+                <input type="file" id="imageFile" name="imageFile" class="flex-grow w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" required>
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Adicionar Foto</button>
+            </div>
+             <div class="mt-4">
+                <img id="image-preview" src="https://via.placeholder.com/150" alt="Pré-visualização" class="w-32 h-32 object-cover rounded hidden">
+            </div>
+        </form>
         <div class="bg-gray-800 rounded-lg overflow-x-auto"><table class="w-full text-left min-w-max">
             <thead class="bg-gray-700"><tr><th class="p-4">Imagem</th><th class="p-4">Ações</th></tr></thead>
             <tbody>
                 ${appState.galleryImages.map(img => `<tr class="border-b border-gray-700">
-                    <td class="p-4"><img src="${img.url.replace('1200x800', '600x400')}" class="h-16 w-24 object-cover rounded"></td>
+                    <td class="p-4"><img src="${img.url}" class="h-16 w-24 object-cover rounded"></td>
                     <td class="p-4"><button data-admin-action="delete-gallery" data-id="${img.id}" class="text-red-500 hover:text-red-400">Excluir</button></td>
                 </tr>`).join('') || '<tr><td colspan="2" class="p-4 text-center text-gray-400">Nenhuma foto na galeria.</td></tr>'}
             </tbody></table></div>`;
+
+    const imageFileInput = document.getElementById('imageFile');
+    const imagePreview = document.getElementById('image-preview');
+    imageFileInput.addEventListener('change', () => {
+        const file = imageFileInput.files[0];
+        if (file) {
+            imagePreview.classList.remove('hidden');
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        } else {
+            imagePreview.classList.add('hidden');
+        }
+    });
     document.getElementById('gallery-form').addEventListener('submit', addGalleryImage);
 }
 
@@ -844,28 +836,102 @@ function openProductDetailModal(id) {
 
 function openNewsModal(id = null) {
     const article = id ? appState.news.find(a => a.id === id) : null;
-    openModal('generic-modal', null, `
-        <h2 class="text-2xl font-bold mb-6">${id ? 'Editar' : 'Nova'} Notícia</h2><form id="news-form"><input type="hidden" name="id" value="${id || ''}">
-            <div class="mb-4"><label class="block mb-2">Título</label><input type="text" name="title" class="w-full bg-gray-700 p-2 rounded" value="${article?.title || ''}" required></div>
-            <div class="mb-4"><label class="block mb-2">Conteúdo</label><textarea name="content" rows="4" class="w-full bg-gray-700 p-2 rounded" required>${article?.content || ''}</textarea></div>
-            <div class="mb-6"><label class="block mb-2">URL da Imagem</label><input type="text" name="image" class="w-full bg-gray-700 p-2 rounded" value="${article?.image || 'https://images.unsplash.com/photo-1593344484962-796b16d49b1a?auto=format&fit=crop&w=600&q=80'}" required>
-            <small class="text-gray-400 mt-1 block">Em um site real, aqui seria um botão de upload de arquivo.</small></div>
-            <div class="flex justify-end gap-4"><button type="button" data-close-modal="generic-modal" class="bg-gray-600 hover:bg-gray-700 py-2 px-4 rounded">Cancelar</button><button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Salvar</button></div>
-        </form>`);
+    const modalContent = `
+        <h2 class="text-2xl font-bold mb-6">${id ? 'Editar' : 'Nova'} Notícia</h2>
+        <form id="news-form">
+            <input type="hidden" name="id" value="${id || ''}">
+            <input type="hidden" name="existingImageUrl" value="${article?.image || ''}">
+            <div class="mb-4">
+                <label class="block mb-2">Título</label>
+                <input type="text" name="title" class="w-full bg-gray-700 p-2 rounded" value="${article?.title || ''}" required>
+            </div>
+            <div class="mb-4">
+                <label class="block mb-2">Conteúdo</label>
+                <textarea name="content" rows="4" class="w-full bg-gray-700 p-2 rounded" required>${article?.content || ''}</textarea>
+            </div>
+            <div class="mb-6">
+                <label class="block mb-2">Imagem da Notícia</label>
+                <input type="file" name="imageFile" id="imageFile" class="w-full bg-gray-700 p-2 rounded" accept="image/*">
+                <div class="mt-4">
+                    <img id="image-preview" src="${article?.image || 'https://via.placeholder.com/150'}" alt="Pré-visualização" class="w-32 h-32 object-cover rounded">
+                </div>
+            </div>
+            <div class="flex justify-end gap-4">
+                <button type="button" data-close-modal="generic-modal" class="bg-gray-600 hover:bg-gray-700 py-2 px-4 rounded">Cancelar</button>
+                <button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Salvar</button>
+            </div>
+        </form>
+    `;
+    openModal('generic-modal', null, modalContent);
+
+    const imageFileInput = document.getElementById('imageFile');
+    const imagePreview = document.getElementById('image-preview');
+    imageFileInput.addEventListener('change', () => {
+        const file = imageFileInput.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
     document.getElementById('news-form').addEventListener('submit', saveNews);
 }
 
 function openProductModal(id = null) {
     const product = id ? appState.products.find(p => p.id === id) : null;
-    openModal('generic-modal', null, `
-         <h2 class="text-2xl font-bold mb-6">${id ? 'Editar' : 'Novo'} Produto</h2><form id="product-form"><input type="hidden" name="id" value="${id || ''}">
-            <div class="mb-4"><label class="block mb-2">Nome do Produto</label><input type="text" name="name" class="w-full bg-gray-700 p-2 rounded" value="${product?.name || ''}" required></div>
-            <div class="mb-4"><label class="block mb-2">Preço (ex: 89.90)</label><input type="number" step="0.01" name="price" class="w-full bg-gray-700 p-2 rounded" value="${product?.price || ''}" required></div>
-            <div class="mb-4"><label class="block mb-2">Descrição</label><textarea name="description" rows="4" class="w-full bg-gray-700 p-2 rounded" required>${product?.description || ''}</textarea></div>
-            <div class="mb-6"><label class="block mb-2">URL da Imagem</label><input type="text" name="image" class="w-full bg-gray-700 p-2 rounded" value="${product?.image || 'https://images.unsplash.com/photo-1517649763942-32a3a7b3b733?auto=format&fit=crop&w=600&q=80'}" required>
-            <small class="text-gray-400 mt-1 block">Em um site real, aqui seria um botão de upload de arquivo.</small></div>
-            <div class="flex justify-end gap-4"><button type="button" data-close-modal="generic-modal" class="bg-gray-600 hover:bg-gray-700 py-2 px-4 rounded">Cancelar</button><button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Salvar</button></div>
-         </form>`);
+    const modalContent = `
+        <h2 class="text-2xl font-bold mb-6">${id ? 'Editar' : 'Novo'} Produto</h2>
+        <form id="product-form">
+            <input type="hidden" name="id" value="${id || ''}">
+            <input type="hidden" name="existingImageUrl" value="${product?.image || ''}">
+
+            <div class="mb-4">
+                <label class="block mb-2">Nome do Produto</label>
+                <input type="text" name="name" class="w-full bg-gray-700 p-2 rounded" value="${product?.name || ''}" required>
+            </div>
+            <div class="mb-4">
+                <label class="block mb-2">Preço (ex: 89.90)</label>
+                <input type="number" step="0.01" name="price" class="w-full bg-gray-700 p-2 rounded" value="${product?.price || ''}" required>
+            </div>
+            <div class="mb-4">
+                <label class="block mb-2">Descrição</label>
+                <textarea name="description" rows="4" class="w-full bg-gray-700 p-2 rounded" required>${product?.description || ''}</textarea>
+            </div>
+
+            <div class="mb-6">
+                <label class="block mb-2">Imagem do Produto</label>
+                <input type="file" name="imageFile" id="imageFile" class="w-full bg-gray-700 p-2 rounded" accept="image/*">
+                <div class="mt-4">
+                    <img id="image-preview" src="${product?.image || 'https://via.placeholder.com/150'}" alt="Pré-visualização" class="w-32 h-32 object-cover rounded">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-4">
+                <button type="button" data-close-modal="generic-modal" class="bg-gray-600 hover:bg-gray-700 py-2 px-4 rounded">Cancelar</button>
+                <button type="submit" class="bg-red-600 hover:bg-red-700 py-2 px-4 rounded">Salvar</button>
+            </div>
+        </form>
+    `;
+    openModal('generic-modal', null, modalContent);
+
+    // Add event listeners for the modal form
+    const imageFileInput = document.getElementById('imageFile');
+    const imagePreview = document.getElementById('image-preview');
+
+    imageFileInput.addEventListener('change', () => {
+        const file = imageFileInput.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
     document.getElementById('product-form').addEventListener('submit', saveProduct);
 }
 
@@ -937,15 +1003,47 @@ async function saveAboutPageContent(e) {
 
 async function saveNews(e) {
     e.preventDefault();
-    const formData = new FormData(e.target);
+    const form = e.target;
+    const formData = new FormData(form);
     const id = formData.get('id');
+    const imageFile = formData.get('imageFile');
+    const existingImageUrl = formData.get('existingImageUrl');
+
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Salvando...';
+
+    let imageUrl = existingImageUrl;
+
+    if (imageFile && imageFile.size > 0) {
+        imageUrl = await uploadImage(imageFile);
+        if (!imageUrl) {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Salvar';
+            return;
+        }
+    }
+
     const articleData = {
-        title: formData.get('title'), content: formData.get('content'), image: formData.get('image'),
+        title: formData.get('title'),
+        content: formData.get('content'),
+        image: imageUrl,
         date: new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
     };
-    if (id) await updateDoc(getDocRef('news', id), articleData);
-    else await addDoc(getCollectionRef('news'), articleData);
-    closeModal('generic-modal');
+
+    try {
+        if (id) {
+            await updateDoc(getDocRef('news', id), articleData);
+        } else {
+            await addDoc(getCollectionRef('news'), articleData);
+        }
+        closeModal('generic-modal');
+    } catch (error) {
+        console.error("Error saving news: ", error);
+        showCustomAlert('Erro', 'Não foi possível salvar a notícia.');
+        submitButton.disabled = false;
+        submitButton.textContent = 'Salvar';
+    }
 }
 
 async function deleteNews(id) {
@@ -968,28 +1066,104 @@ async function deleteCalendarEvent(id) {
 
 async function addGalleryImage(e) {
     e.preventDefault();
-    const imageUrl = e.target.imageUrl.value;
+    const form = e.target;
+    const imageFile = form.imageFile.files[0];
+    if (!imageFile) {
+        showCustomAlert('Erro', 'Por favor, selecione uma imagem para enviar.');
+        return;
+    }
+
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Enviando...';
+
+    const imageUrl = await uploadImage(imageFile);
+
     if (imageUrl) {
         await addDoc(getCollectionRef('galleryImages'), { url: imageUrl, createdAt: new Date() });
-        e.target.reset();
+        form.reset();
+        document.getElementById('image-preview').classList.add('hidden');
     }
+
+    submitButton.disabled = false;
+    submitButton.textContent = 'Adicionar Foto';
 }
 
 async function deleteGalleryImage(id) {
     if (confirm('Tem certeza?')) await deleteDoc(getDocRef('galleryImages', id));
 }
 
+const IMGBB_API_KEY = "163a5cae060857c200bca8b90c5dd652";
+
+async function uploadImage(imageFile) {
+    if (!imageFile) return null;
+
+    const formData = new FormData();
+    formData.append('image', imageFile);
+
+    try {
+        const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+            method: 'POST',
+            body: formData,
+        });
+        const result = await response.json();
+        if (result.success) {
+            return result.data.url;
+        } else {
+            throw new Error(result.error.message);
+        }
+    } catch (error) {
+        console.error('Image upload failed:', error);
+        showCustomAlert('Erro de Upload', `Não foi possível carregar a imagem: ${error.message}`);
+        return null;
+    }
+}
+
 async function saveProduct(e) {
     e.preventDefault();
-    const formData = new FormData(e.target);
+    const form = e.target;
+    const formData = new FormData(form);
     const id = formData.get('id');
+    const imageFile = formData.get('imageFile');
+    const existingImageUrl = formData.get('existingImageUrl');
+
+    // Disable submit button to prevent multiple submissions
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Salvando...';
+
+    let imageUrl = existingImageUrl;
+
+    if (imageFile && imageFile.size > 0) {
+        imageUrl = await uploadImage(imageFile);
+        if (!imageUrl) { // Stop if upload failed
+            submitButton.disabled = false;
+            submitButton.textContent = 'Salvar';
+            return;
+        }
+    }
+
     const productData = {
-        name: formData.get('name'), price: parseFloat(formData.get('price')),
-        image: formData.get('image'), description: formData.get('description'),
+        name: formData.get('name'),
+        price: parseFloat(formData.get('price')),
+        description: formData.get('description'),
+        image: imageUrl,
     };
-    if (id) await updateDoc(getDocRef('products', id), productData);
-    else await addDoc(getCollectionRef('products'), productData);
-    closeModal('generic-modal');
+
+    try {
+        if (id) {
+            await updateDoc(getDocRef('products', id), productData);
+        } else {
+            await addDoc(getCollectionRef('products'), productData);
+        }
+        closeModal('generic-modal');
+    } catch (error) {
+        console.error("Error saving product: ", error);
+        showCustomAlert('Erro', 'Não foi possível salvar o produto.');
+        // Re-enable button on error
+        submitButton.disabled = false;
+        submitButton.textContent = 'Salvar';
+    }
 }
 
 async function deleteProduct(id) {
@@ -1060,7 +1234,7 @@ function closeModal(modalId) {
 }
 
 function setupRealtimeListeners() {
-    const collections = ['calendarEvents', 'products', 'news', 'registrations', 'galleryImages', 'shipping_options'];
+    const collections = ['calendarEvents', 'products', 'news', 'registrations', 'galleryImages'];
     collections.forEach(col => {
         onSnapshot(getCollectionRef(col), snapshot => {
             appState[col] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -1170,6 +1344,11 @@ function addEventListeners() {
         }
 
         // Shop
+        const calculateShippingButton = e.target.closest('#calculate-shipping-btn');
+        if (calculateShippingButton) {
+            handleCalculateShipping();
+            return;
+        }
         const productDetailLink = e.target.closest('[data-product-id]');
         if (productDetailLink) {
             openProductDetailModal(productDetailLink.dataset.productId);
@@ -1225,7 +1404,6 @@ function addEventListeners() {
                 'delete-gallery': () => deleteGalleryImage(id),
                 'open-product-modal': () => openProductModal(id),
                 'delete-product': () => deleteProduct(id),
-                'delete-shipping': () => deleteShippingOption(id),
             };
             if (actions[adminAction]) {
                 actions[adminAction]();

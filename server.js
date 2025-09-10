@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
 const axios = require('axios');
+const Correios = require('node-correios');
+const correios = new Correios();
 
 // Initialize Firebase Admin SDK
 // The credentials will be loaded from an environment variable
@@ -23,6 +25,35 @@ app.use(express.static(__dirname)); // Serve static files from the root director
 // Routes
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
+});
+
+app.post('/calculate-shipping', async (req, res) => {
+    const { cepDestino, peso, valor } = req.body;
+
+    if (!cepDestino) {
+        return res.status(400).json({ error: 'CEP de destino é obrigatório.' });
+    }
+
+    const args = {
+        nCdServico: '04014,04510', // SEDEX, PAC
+        sCepOrigem: '01451001', // CEP de Origem (Ex: da loja)
+        sCepDestino: cepDestino,
+        nVlPeso: peso || '1',
+        nCdFormato: 1, // 1 para caixa/pacote
+        nVlComprimento: 20,
+        nVlAltura: 5,
+        nVlLargura: 15,
+        nVlDiametro: 0,
+        nVlValorDeclarado: valor || 0,
+    };
+
+    try {
+        const result = await correios.calcPreco(args);
+        res.json(result);
+    } catch (error) {
+        console.error('Erro ao calcular frete:', error);
+        res.status(500).json({ error: 'Falha ao calcular o frete.', details: error.message });
+    }
 });
 
 app.post('/create-checkout', async (req, res) => {

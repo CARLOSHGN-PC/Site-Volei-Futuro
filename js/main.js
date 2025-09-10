@@ -600,11 +600,31 @@ async function handleCheckout() {
     } : null;
 
     try {
-        const createCheckout = httpsCallable(functions, 'createPagSeguroCheckout');
-        const result = await createCheckout({ items: cart, shipping: shippingDetails });
+        // The URL will be http://localhost:3000 for local dev,
+        // and the public Render URL in production.
+        // For now, we'll hardcode the relative path.
+        const response = await fetch('/create-checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                items: cart,
+                shipping: shippingDetails,
+                userId: appState.currentUser.uid,
+                userEmail: appState.currentUser.email,
+                userName: appState.currentUser.displayName,
+            }),
+        });
 
-        if (result.data && result.data.checkoutUrl) {
-            window.location.href = result.data.checkoutUrl;
+        if (!response.ok) {
+            throw new Error('A resposta do servidor não foi OK.');
+        }
+
+        const result = await response.json();
+
+        if (result && result.checkoutUrl) {
+            window.location.href = result.checkoutUrl;
         } else {
             throw new Error("URL de checkout não recebida.");
         }

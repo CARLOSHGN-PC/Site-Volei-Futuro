@@ -514,7 +514,7 @@ async function handleCalculateShipping() {
         const response = await fetch('/calculate-shipping', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cepDestino: cep })
+            body: JSON.stringify({ cepDestino: cep, items: cart })
         });
 
         if (!response.ok) {
@@ -530,14 +530,13 @@ async function handleCalculateShipping() {
         }
 
         let shippingHTML = data.map((opt, index) => {
-             const serviceName = opt.Codigo === '04014' ? 'SEDEX' : opt.Codigo === '04510' ? 'PAC' : 'Correios';
              return `
                 <div class="flex items-center justify-between bg-gray-700 p-4 rounded-lg mb-2">
                     <label for="shipping-${opt.Codigo}" class="flex-grow cursor-pointer">
-                        <input type="radio" id="shipping-${opt.Codigo}" name="shipping-option" value="${opt.Codigo}" data-cost="${opt.Valor.replace(',', '.')}" class="mr-2" ${index === 0 ? 'checked' : ''}>
-                        <span>${serviceName} - ${opt.PrazoEntrega} dias</span>
+                        <input type="radio" id="shipping-${opt.Codigo}" name="shipping-option" value="${opt.Codigo}" data-cost="${opt.Valor}" class="mr-2" ${index === 0 ? 'checked' : ''}>
+                        <span>${opt.Servico} - ${opt.PrazoEntrega} dias</span>
                     </label>
-                    <span class="font-semibold">R$ ${opt.Valor}</span>
+                    <span class="font-semibold">R$ ${parseFloat(opt.Valor).toFixed(2).replace('.', ',')}</span>
                 </div>
             `
         }).join('');

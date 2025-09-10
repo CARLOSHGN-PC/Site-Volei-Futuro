@@ -224,8 +224,8 @@ function renderShopPage() {
     appState.products.forEach(product => {
         productsGrid.innerHTML += `
             <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group flex flex-col">
-                <div class="cursor-pointer" data-product-id="${product.id}">
-                    <img src="${product.image}" alt="${product.name}" class="w-full h-64 object-cover">
+                <div class="cursor-pointer product-image-container" data-product-id="${product.id}">
+                    <img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover">
                 </div>
                 <div class="p-6 text-center flex-grow flex flex-col">
                     <h3 class="text-xl font-bold mb-2 flex-grow">${product.name}</h3>

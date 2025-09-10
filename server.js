@@ -3,9 +3,6 @@ const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
 const axios = require('axios');
-const Correios = require('node-correios');
-const correios = new Correios();
-
 // Initialize Firebase Admin SDK
 // The credentials will be loaded from an environment variable
 // which the user will need to set up on Render.
@@ -28,30 +25,45 @@ app.get('/', (req, res) => {
 });
 
 app.post('/calculate-shipping', async (req, res) => {
-    const { cepDestino, peso, valor } = req.body;
+    const { cepDestino } = req.body;
+    const cepOrigem = '01451001'; // CEP de Origem (Ex: da loja)
+    const peso = 1000; // 1kg em gramas
+    const altura = 5; // cm
+    const largura = 15; // cm
+    const comprimento = 20; // cm
+    const chaveApi = 'teste'; // Chave de teste da API CepCerto
 
     if (!cepDestino) {
         return res.status(400).json({ error: 'CEP de destino é obrigatório.' });
     }
 
-    const args = {
-        nCdServico: '04014,04510', // SEDEX, PAC
-        sCepOrigem: '01451001', // CEP de Origem (Ex: da loja)
-        sCepDestino: cepDestino,
-        nVlPeso: peso || '1',
-        nCdFormato: 1, // 1 para caixa/pacote
-        nVlComprimento: 20,
-        nVlAltura: 5,
-        nVlLargura: 15,
-        nVlDiametro: 0,
-        nVlValorDeclarado: valor || 0,
-    };
+    const url = `https://cepcerto.com/ws/json-frete/${cepOrigem}/${cepDestino}/${peso}/${altura}/${largura}/${comprimento}/${chaveApi}`;
 
     try {
-        const result = await correios.calcPreco(args);
-        res.json(result);
+        const response = await axios.get(url);
+        const data = response.data;
+
+        // A API da CepCerto retorna um único objeto, vamos transformá-lo em um array
+        // para manter a compatibilidade com o frontend que espera múltiplos resultados (PAC, SEDEX)
+        const results = [];
+        if (data.valor_pac) {
+            results.push({
+                Codigo: '04510', // PAC
+                Valor: data.valor_pac.toFixed(2).replace('.', ','),
+                PrazoEntrega: data.prazo_pac,
+            });
+        }
+        if (data.valor_sedex) {
+             results.push({
+                Codigo: '04014', // SEDEX
+                Valor: data.valor_sedex.toFixed(2).replace('.', ','),
+                PrazoEntrega: data.prazo_sedex,
+            });
+        }
+
+        res.json(results);
     } catch (error) {
-        console.error('Erro ao calcular frete:', error);
+        console.error('Erro ao calcular frete com CepCerto:', error.message);
         res.status(500).json({ error: 'Falha ao calcular o frete.', details: error.message });
     }
 });

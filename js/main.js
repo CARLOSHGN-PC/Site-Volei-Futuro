@@ -9,6 +9,7 @@ import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     updateProfile,
+    updatePassword,
     sendPasswordResetEmail,
     signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -20,7 +21,11 @@ import {
     addDoc,
     setDoc,
     updateDoc,
-    deleteDoc
+    deleteDoc,
+    query,
+    where,
+    orderBy,
+    getDocs
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
@@ -73,6 +78,42 @@ function renderPage(templateId) {
     if (template) {
         appRoot.innerHTML = '';
         appRoot.appendChild(template.content.cloneNode(true));
+    }
+}
+
+async function handleProfileUpdate(e) {
+    e.preventDefault();
+    const newName = e.target.accountName.value;
+    if (!newName) {
+        showCustomAlert('Erro', 'O nome não pode estar em branco.');
+        return;
+    }
+
+    try {
+        await updateProfile(auth.currentUser, { displayName: newName });
+        handleUserAuthState(auth.currentUser); // Update the header
+        showCustomAlert('Sucesso!', 'Seu nome foi atualizado.');
+    } catch (error) {
+        console.error("Error updating profile: ", error);
+        showCustomAlert('Erro', 'Não foi possível atualizar seu nome.');
+    }
+}
+
+async function handlePasswordUpdate(e) {
+    e.preventDefault();
+    const newPassword = e.target.newPassword.value;
+    if (newPassword.length < 6) {
+        showCustomAlert('Erro', 'A nova senha deve ter pelo menos 6 caracteres.');
+        return;
+    }
+
+    try {
+        await updatePassword(auth.currentUser, newPassword);
+        e.target.reset();
+        showCustomAlert('Sucesso!', 'Sua senha foi alterada.');
+    } catch (error) {
+        console.error("Error updating password: ", error);
+        showCustomAlert('Erro', 'Ocorreu um erro ao alterar sua senha. Pode ser necessário fazer login novamente antes de tentar de novo.');
     }
 }
 
@@ -310,6 +351,65 @@ function renderAdminPage() {
     }
     renderAdminSection('dashboard');
 }
+
+async function renderAccountPage() {
+    if (!appState.currentUser) {
+        showCustomAlert("Acesso Negado", "Você precisa estar logado para acessar esta página.");
+        navigateTo('login');
+        return;
+    }
+
+    renderPage('template-account');
+
+    // Populate profile form
+    document.getElementById('accountName').value = appState.currentUser.displayName || '';
+    document.getElementById('accountEmail').value = appState.currentUser.email || '';
+
+    // Add event listeners for profile and password forms
+    document.getElementById('profile-form').addEventListener('submit', handleProfileUpdate);
+    document.getElementById('password-form').addEventListener('submit', handlePasswordUpdate);
+
+    // Fetch and display order history
+    const orderHistoryContainer = document.getElementById('order-history-container');
+    orderHistoryContainer.innerHTML = '<p class="text-gray-400">Carregando histórico de compras...</p>';
+
+    const ordersRef = collection(db, 'orders');
+    const q = query(ordersRef, where("userId", "==", appState.currentUser.uid), orderBy("createdAt", "desc"));
+
+    try {
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+            orderHistoryContainer.innerHTML = '<p class="text-gray-400">Nenhuma compra encontrada.</p>';
+            return;
+        }
+
+        let ordersHTML = '';
+        querySnapshot.forEach(doc => {
+            const order = doc.data();
+            const orderDate = order.createdAt.toDate().toLocaleDateString('pt-BR');
+            const total = (order.totalAmount / 100).toFixed(2).replace('.', ',');
+            const itemsHTML = order.items.map(item => `<li>${item.quantity}x ${item.name}</li>`).join('');
+
+            ordersHTML += `
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="font-bold">Pedido: ${doc.id}</p>
+                        <p class="text-sm text-gray-400">Data: ${orderDate}</p>
+                    </div>
+                    <ul class="list-disc list-inside text-gray-300 mb-2">
+                        ${itemsHTML}
+                    </ul>
+                    <p class="text-right font-bold">Total: R$ ${total}</p>
+                </div>
+            `;
+        });
+        orderHistoryContainer.innerHTML = ordersHTML;
+    } catch (error) {
+        console.error("Error fetching order history: ", error);
+        orderHistoryContainer.innerHTML = '<p class="text-red-500">Erro ao carregar o histórico de compras.</p>';
+    }
+}
+
 
 // ===============================================================================
 // LÓGICA DO CARRINHO (Frontend-only)
@@ -732,7 +832,7 @@ const pageRenderers = {
     'home': renderHomePage, 'sobre': renderAboutPage, 'noticias': renderNewsPage,
     'calendario': renderCalendarPage, 'galeria': renderGalleryPage, 'loja': renderShopPage,
     'carrinho': renderCartPage, 'inscricao': renderInscriptionPage, 'login': renderLoginPage,
-    'signup': renderSignupPage, 'admin': renderAdminPage
+    'signup': renderSignupPage, 'account': renderAccountPage, 'admin': renderAdminPage
 };
 
 function navigateTo(pageId) {
@@ -816,21 +916,21 @@ function setupRealtimeListeners() {
 function handleUserAuthState(user) {
     const userAuthLinks = document.getElementById('user-auth-links');
     const userAccountLinks = document.getElementById('user-account-links');
-    const userNameEl = document.getElementById('user-name');
+    const userNameLink = document.getElementById('user-name-link');
     const adminLoginButton = document.getElementById('admin-login-button');
 
     if (user) {
         appState.currentUser = user;
         userAuthLinks.classList.add('hidden');
         userAccountLinks.classList.remove('hidden');
-        userNameEl.textContent = user.displayName || 'Usuário';
+        userNameLink.textContent = user.displayName || 'Minha Conta';
         // Hide the round admin login button if a regular user is logged in
         adminLoginButton.classList.add('hidden');
     } else {
         appState.currentUser = null;
         userAuthLinks.classList.remove('hidden');
         userAccountLinks.classList.add('hidden');
-        userNameEl.textContent = '';
+        userNameLink.textContent = '';
         // Show the admin login button if no user is logged in
         adminLoginButton.classList.remove('hidden');
     }

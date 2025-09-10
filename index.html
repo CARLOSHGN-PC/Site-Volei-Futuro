@@ -35,7 +35,7 @@
                     <a href="#login" class="nav-link hover:text-red-500 transition duration-300">Login</a>
                 </div>
                 <div id="user-account-links" class="hidden space-x-4 items-center">
-                    <span id="user-name" class="font-semibold"></span>
+                    <a href="#account" id="user-name-link" class="nav-link font-semibold hover:text-red-500 transition duration-300"></a>
                     <button id="logout-button-user" class="nav-link hover:text-red-500 transition duration-300">Sair</button>
                 </div>
                 <a id="admin-login-button" href="#login" class="w-9 h-9 flex items-center justify-center bg-gray-700 rounded-full hover:bg-red-600 transition duration-300" title="Acesso do Administrador">
@@ -295,6 +295,50 @@
                      <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition duration-300 shadow-lg">Criar Conta</button>
                  </form>
              </div>
+        </div>
+    </template>
+
+    <!-- TEMPLATE: MY ACCOUNT -->
+    <template id="template-account">
+        <div class="py-20">
+            <section class="container mx-auto px-6">
+                <h1 class="text-4xl font-bold text-center mb-12">Minha <span class="text-red-600">Conta</span></h1>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+                    <!-- Profile Management -->
+                    <div class="md:col-span-1 bg-gray-800 p-8 rounded-lg shadow-2xl">
+                        <h2 class="text-2xl font-bold mb-6">Meus Dados</h2>
+                        <form id="profile-form">
+                            <div class="mb-4">
+                                <label for="accountName" class="block text-sm font-semibold mb-2 text-gray-300">Nome</label>
+                                <input type="text" id="accountName" name="accountName" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" required>
+                            </div>
+                            <div class="mb-6">
+                                <label for="accountEmail" class="block text-sm font-semibold mb-2 text-gray-300">Email</label>
+                                <input type="email" id="accountEmail" name="accountEmail" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" disabled>
+                                <small class="text-gray-400 mt-1 block">O e-mail não pode ser alterado.</small>
+                            </div>
+                            <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg">Salvar Nome</button>
+                        </form>
+                        <hr class="my-8 border-gray-700">
+                        <h3 class="text-xl font-bold mb-4">Alterar Senha</h3>
+                        <form id="password-form">
+                             <div class="mb-6">
+                                <label for="newPassword" class="block text-sm font-semibold mb-2 text-gray-300">Nova Senha</label>
+                                <input type="password" id="newPassword" name="newPassword" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" required>
+                            </div>
+                            <button type="submit" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">Alterar Senha</button>
+                        </form>
+                    </div>
+                    <!-- Order History -->
+                    <div class="md:col-span-2 bg-gray-800 p-8 rounded-lg shadow-2xl">
+                        <h2 class="text-2xl font-bold mb-6">Histórico de Compras</h2>
+                        <div id="order-history-container" class="space-y-6">
+                            <!-- Orders will be injected here by JS -->
+                            <p class="text-gray-400">Nenhuma compra encontrada.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </template>
     

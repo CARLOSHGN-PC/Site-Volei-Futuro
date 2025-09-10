@@ -84,6 +84,18 @@ exports.createPagSeguroCheckout = functions.runWith({ secrets: ["PAGSEGURO_TOKEN
             throw new Error('Checkout link not found in PagSeguro response');
         }
 
+        // Save the order to Firestore
+        const orderPayload = {
+            userId: context.auth.uid,
+            pagseguroOrderId: response.data.id,
+            referenceId: orderReferenceId,
+            createdAt: new Date(),
+            items: items,
+            totalAmount: payload.charges[0].amount.value,
+            status: 'PENDING'
+        };
+        await admin.firestore().collection('orders').add(orderPayload);
+
         return { checkoutUrl: checkoutLink.href };
 
     } catch (error) {

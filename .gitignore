@@ -1,6 +1,6 @@
 # Dependencies
 /node_modules
-/functions/node_modules
+/functions/ # Obsolete
 
 # Firebase
 .firebase/
@@ -9,6 +9,9 @@ firebase.json
 database.rules.json
 storage.rules
 .firebaserc
+
+# Environment
+.env
 
 # Build output
 dist

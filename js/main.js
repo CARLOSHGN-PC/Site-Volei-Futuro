@@ -58,6 +58,7 @@ let appState = {
     news: [],
     registrations: [],
     galleryImages: [],
+    shipping_options: [],
     currentUser: null,
 };
 
@@ -462,12 +463,12 @@ function updateCartBadge() {
 
 function updateCartDisplay() {
     const container = document.getElementById('cart-items-container');
-    const summary = document.getElementById('cart-summary');
-    if (!container || !summary) return;
+    const summaryContainer = document.getElementById('cart-summary');
+    if (!container || !summaryContainer) return;
 
     if (cart.length === 0) {
         container.innerHTML = '<p class="text-center text-gray-400">Seu carrinho está vazio.</p>';
-        summary.innerHTML = '';
+        summaryContainer.innerHTML = '';
         return;
     }
 
@@ -491,10 +492,59 @@ function updateCartDisplay() {
             </div>
         </div>`).join('');
 
-    const totalPrice = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-    summary.innerHTML = `
-        <h2 class="text-2xl font-bold">Total: <span class="text-red-600">R$ ${totalPrice.toFixed(2).replace('.', ',')}</span></h2>
-        <button data-checkout class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg">Finalizar Compra</button>`;
+    // Shipping Options Section
+    let shippingHTML = '<h3 class="text-xl font-bold mt-8 mb-4">Opções de Frete</h3>';
+    if (appState.shipping_options && appState.shipping_options.length > 0) {
+        shippingHTML += appState.shipping_options.map((opt, index) => `
+            <div class="flex items-center justify-between bg-gray-800 p-4 rounded-lg mb-2">
+                <label for="shipping-${opt.id}" class="flex-grow cursor-pointer">
+                    <input type="radio" id="shipping-${opt.id}" name="shipping-option" value="${opt.id}" data-cost="${opt.cost}" class="mr-2" ${index === 0 ? 'checked' : ''}>
+                    <span>${opt.name}</span>
+                </label>
+                <span class="font-semibold">R$ ${opt.cost.toFixed(2).replace('.', ',')}</span>
+            </div>
+        `).join('');
+    } else {
+        shippingHTML += '<p class="text-gray-400">Nenhuma opção de frete disponível.</p>';
+    }
+    // Inject shipping options right after the cart items
+    if (!document.getElementById('shipping-options-container')) {
+        container.insertAdjacentHTML('afterend', `<div id="shipping-options-container">${shippingHTML}</div>`);
+    } else {
+        document.getElementById('shipping-options-container').innerHTML = shippingHTML;
+    }
+
+    updateCartSummary();
+
+    // Add event listener to shipping radio buttons
+    document.querySelectorAll('input[name="shipping-option"]').forEach(radio => {
+        radio.addEventListener('change', updateCartSummary);
+    });
+}
+
+function updateCartSummary() {
+    const summaryContainer = document.getElementById('cart-summary');
+    if (!summaryContainer) return;
+
+    const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+
+    let shippingCost = 0;
+    const selectedShipping = document.querySelector('input[name="shipping-option"]:checked');
+    if (selectedShipping) {
+        shippingCost = parseFloat(selectedShipping.dataset.cost);
+    }
+
+    const total = subtotal + shippingCost;
+
+    summaryContainer.innerHTML = `
+        <div class="space-y-2 text-lg">
+            <div class="flex justify-between"><span>Subtotal:</span> <span>R$ ${subtotal.toFixed(2).replace('.', ',')}</span></div>
+            <div class="flex justify-between"><span>Frete:</span> <span>R$ ${shippingCost.toFixed(2).replace('.', ',')}</span></div>
+            <hr class="my-2 border-gray-600">
+            <div class="flex justify-between font-bold text-2xl"><span class="text-red-500">Total:</span> <span class="text-red-500">R$ ${total.toFixed(2).replace('.', ',')}</span></div>
+        </div>
+        <button data-checkout class="mt-6 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg">Finalizar Compra</button>
+    `;
 }
 
 function updateCartQuantity(productId, change) {
@@ -538,9 +588,20 @@ async function handleCheckout() {
         return;
     }
 
+    const selectedShipping = document.querySelector('input[name="shipping-option"]:checked');
+    if (!selectedShipping && appState.shipping_options.length > 0) {
+        showCustomAlert("Frete Necessário", "Por favor, selecione uma opção de frete.");
+        return;
+    }
+
+    const shippingDetails = selectedShipping ? {
+        id: selectedShipping.value,
+        cost: parseFloat(selectedShipping.dataset.cost)
+    } : null;
+
     try {
         const createCheckout = httpsCallable(functions, 'createPagSeguroCheckout');
-        const result = await createCheckout({ items: cart });
+        const result = await createCheckout({ items: cart, shipping: shippingDetails });
 
         if (result.data && result.data.checkoutUrl) {
             window.location.href = result.data.checkoutUrl;
@@ -564,9 +625,76 @@ function renderAdminSection(section) {
     const renderers = {
         'dashboard': renderAdminDashboard, 'paginas': renderAdminPages, 'noticias': renderAdminNews,
         'calendario': renderAdminCalendar, 'galeria': renderAdminGallery, 'loja': renderAdminShop,
-        'inscricoes': renderAdminRegistrations,
+        'frete': renderAdminShipping, 'inscricoes': renderAdminRegistrations,
     };
     if(renderers[section]) renderers[section]();
+}
+
+function renderAdminShipping() {
+    const contentArea = adminContentArea();
+    if (!contentArea) return;
+
+    contentArea.innerHTML = `
+        <h2 class="text-2xl font-bold mb-4">Gerenciar Opções de Frete</h2>
+        <form id="shipping-form" class="mb-8 bg-gray-800 p-4 rounded-lg flex gap-4 items-end">
+            <div class="flex-grow">
+                <label for="shippingName" class="block text-sm font-semibold mb-2 text-gray-300">Nome da Opção (ex: SEDEX)</label>
+                <input type="text" id="shippingName" name="shippingName" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" required>
+            </div>
+            <div class="flex-grow">
+                <label for="shippingCost" class="block text-sm font-semibold mb-2 text-gray-300">Custo (ex: 25.50)</label>
+                <input type="number" step="0.01" id="shippingCost" name="shippingCost" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" required>
+            </div>
+            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Adicionar Opção</button>
+        </form>
+        <div id="shipping-options-table" class="bg-gray-800 rounded-lg overflow-x-auto">
+            <!-- Tabela será preenchida aqui -->
+        </div>
+    `;
+
+    populateShippingTable();
+    document.getElementById('shipping-form').addEventListener('submit', saveShippingOption);
+}
+
+function populateShippingTable() {
+    const tableContainer = document.getElementById('shipping-options-table');
+    if (!tableContainer) return;
+
+    let tableHTML = `<table class="w-full text-left min-w-max">
+        <thead class="bg-gray-700"><tr><th class="p-4">Nome</th><th class="p-4">Custo</th><th class="p-4">Ações</th></tr></thead>
+        <tbody>`;
+
+    if (appState.shipping_options && appState.shipping_options.length > 0) {
+        appState.shipping_options.forEach(option => {
+            tableHTML += `<tr class="border-b border-gray-700">
+                <td class="p-4">${option.name}</td>
+                <td class="p-4">R$ ${option.cost.toFixed(2).replace('.', ',')}</td>
+                <td class="p-4"><button data-admin-action="delete-shipping" data-id="${option.id}" class="text-red-500 hover:text-red-400">Excluir</button></td>
+            </tr>`;
+        });
+    } else {
+        tableHTML += '<tr><td colspan="3" class="p-4 text-center text-gray-400">Nenhuma opção de frete cadastrada.</td></tr>';
+    }
+
+    tableHTML += '</tbody></table>';
+    tableContainer.innerHTML = tableHTML;
+}
+
+async function saveShippingOption(e) {
+    e.preventDefault();
+    const name = e.target.shippingName.value;
+    const cost = parseFloat(e.target.shippingCost.value);
+
+    if (name && !isNaN(cost)) {
+        await addDoc(getCollectionRef('shipping_options'), { name, cost });
+        e.target.reset();
+    }
+}
+
+async function deleteShippingOption(id) {
+    if (confirm('Tem certeza que deseja excluir esta opção de frete?')) {
+        await deleteDoc(getDocRef('shipping_options', id));
+    }
 }
 
 function renderAdminDashboard() {
@@ -912,7 +1040,7 @@ function closeModal(modalId) {
 }
 
 function setupRealtimeListeners() {
-    const collections = ['calendarEvents', 'products', 'news', 'registrations', 'galleryImages'];
+    const collections = ['calendarEvents', 'products', 'news', 'registrations', 'galleryImages', 'shipping_options'];
     collections.forEach(col => {
         onSnapshot(getCollectionRef(col), snapshot => {
             appState[col] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -939,18 +1067,15 @@ function setupRealtimeListeners() {
 function handleUserAuthState(user) {
     const userAuthLinks = document.getElementById('user-auth-links');
     const userAccountLinks = document.getElementById('user-account-links');
-    const userNameLink = document.getElementById('user-name-link');
 
     if (user) {
         appState.currentUser = user;
         userAuthLinks.classList.add('hidden');
         userAccountLinks.classList.remove('hidden');
-        userNameLink.textContent = user.displayName || 'Minha Conta';
     } else {
         appState.currentUser = null;
         userAuthLinks.classList.remove('hidden');
         userAccountLinks.classList.add('hidden');
-        userNameLink.textContent = '';
     }
 }
 
@@ -979,13 +1104,29 @@ function handleInitialPageLoad() {
 function addEventListeners() {
     mobileMenuButton.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
 
+    const userMenuButton = document.getElementById('user-menu-button');
+    const userDropdownMenu = document.getElementById('user-dropdown-menu');
+
+    userMenuButton.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent the document click listener from firing immediately
+        userDropdownMenu.classList.toggle('hidden');
+    });
+
     document.addEventListener('click', e => {
+        // Close dropdown if clicked outside
+        if (!userMenuButton.contains(e.target) && !userDropdownMenu.contains(e.target)) {
+            userDropdownMenu.classList.add('hidden');
+        }
+
         // Main navigation
         const navLink = e.target.closest('a[href^="#"]');
         if (navLink && !navLink.closest('#admin-nav')) {
             e.preventDefault();
             const pageId = navLink.getAttribute('href').substring(1);
             if (navLink.closest('#mobile-menu')) closeMobileMenu();
+            if (navLink.closest('#user-dropdown-menu')) {
+                userDropdownMenu.classList.add('hidden');
+            }
             if (pageId) navigateTo(pageId);
             return;
         }
@@ -1064,6 +1205,7 @@ function addEventListeners() {
                 'delete-gallery': () => deleteGalleryImage(id),
                 'open-product-modal': () => openProductModal(id),
                 'delete-product': () => deleteProduct(id),
+                'delete-shipping': () => deleteShippingOption(id),
             };
             if (actions[adminAction]) {
                 actions[adminAction]();

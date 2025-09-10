@@ -27,18 +27,19 @@ exports.createPagSeguroCheckout = functions.runWith({ secrets: ["PAGSEGURO_TOKEN
     // The PagSeguro API requires a reference_id for the order.
     const orderReferenceId = `ref_${context.auth.uid}_${new Date().getTime()}`;
 
+    const subtotal = data.items.reduce((total, item) => total + (Math.round(item.price * 100) * item.quantity), 0);
+    const shippingCost = data.shipping ? Math.round(data.shipping.cost * 100) : 0;
+    const totalAmount = subtotal + shippingCost;
+
     const payload = {
         "reference_id": orderReferenceId,
         "customer": {
             "name": context.auth.token.name || 'Anonymous User',
             "email": context.auth.token.email,
-            // In a real application, you would collect this from the user.
-            // "tax_id": "12345678900"
         },
         "items": items,
-        // The shipping address is hardcoded for this example.
-        // In a real application, you would collect this from the user.
         "shipping": {
+            "amount": shippingCost,
             "address": {
               "street": "Avenida Brigadeiro Faria Lima",
               "number": "1384",
@@ -53,14 +54,14 @@ exports.createPagSeguroCheckout = functions.runWith({ secrets: ["PAGSEGURO_TOKEN
         "notification_urls": [],
         "charges": [
             {
-                "reference_id": orderReferenceId, // Each charge must have a unique reference_id
+                "reference_id": orderReferenceId,
                 "description": "Venda de produtos Vôlei Futuro",
                 "amount": {
-                    "value": data.items.reduce((total, item) => total + (Math.round(item.price * 100) * item.quantity), 0),
+                    "value": totalAmount,
                     "currency": "BRL"
                 },
                 "payment_method": {
-                    "type": "BOLETO", // Changed to Boleto for simplicity, as it requires less user data
+                    "type": "BOLETO",
                     "capture": true
                 }
             }
@@ -91,7 +92,8 @@ exports.createPagSeguroCheckout = functions.runWith({ secrets: ["PAGSEGURO_TOKEN
             referenceId: orderReferenceId,
             createdAt: new Date(),
             items: items,
-            totalAmount: payload.charges[0].amount.value,
+            shipping: data.shipping,
+            totalAmount: totalAmount,
             status: 'PENDING'
         };
         await admin.firestore().collection('orders').add(orderPayload);

@@ -1961,6 +1961,17 @@ function addEventListeners() {
         document.getElementById('lightbox-image').src = appState.galleryImages[currentGalleryIndex].url;
     });
 
+    document.addEventListener('input', e => {
+        // Auto-format CEP field
+        if (e.target.id === 'cep-input' || e.target.name === 'zipcode') {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 5) {
+                value = value.slice(0, 5) + '-' + value.slice(5, 8);
+            }
+            e.target.value = value;
+        }
+    });
+
     document.addEventListener('click', e => {
         if (!userMenuButton.contains(e.target) && !userDropdownMenu.contains(e.target)) {
             userDropdownMenu.classList.add('hidden');

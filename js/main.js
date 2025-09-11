@@ -1126,21 +1126,26 @@ function openSponsorModal(id = null) {
     `;
     openModal('generic-modal', null, modalContent);
 
-    const imageFileInput = document.getElementById('imageFileModal');
-    const imagePreview = document.getElementById('image-preview-modal');
+    const sponsorForm = document.getElementById('sponsor-form-modal');
+    if (sponsorForm) {
+        const imageFileInput = sponsorForm.querySelector('#imageFileModal');
+        const imagePreview = sponsorForm.querySelector('#image-preview-modal');
 
-    imageFileInput.addEventListener('change', () => {
-        const file = imageFileInput.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                imagePreview.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-    });
+        imageFileInput.addEventListener('change', () => {
+            const file = imageFileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
 
-    document.getElementById('sponsor-form-modal').addEventListener('submit', saveSponsor);
+        sponsorForm.addEventListener('submit', saveSponsor);
+    } else {
+        console.error("Could not find sponsor form after opening modal.");
+    }
 }
 
 async function saveSponsor(e) {
@@ -1983,6 +1988,12 @@ function addEventListeners() {
             userDropdownMenu.classList.add('hidden');
         }
 
+        const backToTopBtn = e.target.closest('#back-to-top');
+        if (backToTopBtn) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
         const navLink = e.target.closest('a[href^="#"]');
         if (navLink && !navLink.closest('#admin-nav')) {
             e.preventDefault();
@@ -2090,6 +2101,17 @@ function addEventListeners() {
         const pageId = event.state?.pageId || window.location.hash.substring(1) || 'home';
         navigateTo(pageId);
     });
+
+    const backToTopButton = document.getElementById('back-to-top');
+    if (backToTopButton) {
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                backToTopButton.classList.remove('hidden', 'opacity-0');
+            } else {
+                backToTopButton.classList.add('hidden', 'opacity-0');
+            }
+        });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

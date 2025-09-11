@@ -9,6 +9,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        #back-to-top {
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+    </style>
 </head>
 <body class="bg-gray-900 text-white">
 
@@ -73,6 +78,11 @@
 
     <!-- CONTAINER PRINCIPAL ONDE O CONTEÚDO DAS PÁGINAS SERÁ INJETADO -->
     <main id="app-root" class="min-h-screen"></main>
+
+    <!-- BOTÃO VOLTAR AO TOPO -->
+    <button id="back-to-top" class="fixed bottom-5 right-5 bg-red-600 text-white p-3 rounded-full shadow-lg hover:bg-red-700 transition-opacity duration-300 z-50 hidden opacity-0">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+    </button>
 
     <!-- RODAPÉ (FIXO PARA TODAS AS PÁGINAS) -->
     <footer class="bg-gray-900 py-10 border-t border-gray-800">

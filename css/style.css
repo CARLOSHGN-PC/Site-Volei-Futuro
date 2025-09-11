@@ -37,6 +37,26 @@ body {
     opacity: 1;
     transform: translateY(0);
 }
+
+/* Hero Slider */
+#hero-section {
+    background-color: #111827; /* gray-900 fallback */
+}
+
+.hero-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+}
+
+.hero-slide.active {
+    opacity: 1;
+}
 .nav-link.active {
     color: #dc2626; /* Cor vermelha para o link ativo */
     font-weight: 700;

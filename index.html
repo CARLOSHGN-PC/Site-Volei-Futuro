@@ -27,7 +27,7 @@
                 <a href="#loja" class="nav-link hover:text-red-500 transition duration-300">Loja</a>
                 <a href="#carrinho" class="relative text-white hover:text-red-500 transition duration-300">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                    <span id="cart-badge" class="cart-badge bg-red-600 text-white rounded-full flex items-center justify-center font-bold">0</span>
+                    <span id="cart-badge-desktop" class="cart-badge bg-red-600 text-white rounded-full flex items-center justify-center font-bold">0</span>
                 </a>
                 <a href="#inscricao" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 shadow-lg">Inscrição de Atleta</a>
                 <div class="relative">
@@ -47,7 +47,12 @@
                     </div>
                 </div>
             </div>
-            <div class="md:hidden">
+            <!-- Mobile Icons Wrapper -->
+            <div class="flex items-center md:hidden space-x-4">
+                 <a href="#carrinho" class="relative text-white hover:text-red-500 transition duration-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    <span id="cart-badge-mobile" class="cart-badge bg-red-600 text-white rounded-full flex items-center justify-center font-bold">0</span>
+                </a>
                 <button id="mobile-menu-button" class="text-white">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
                 </button>
@@ -61,7 +66,6 @@
             <a href="#calendario" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Calendário</a>
             <a href="#galeria" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Galeria</a>
             <a href="#loja" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Loja</a>
-            <a href="#carrinho" class="block py-2 px-4 text-sm hover:bg-gray-700 rounded">Carrinho</a>
             <a href="#inscricao" class="block mt-2 text-center bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 shadow-lg">Inscreva-se</a>
             <a href="#login" class="block text-center py-2 px-4 text-sm text-gray-400 hover:bg-gray-700 rounded mt-2">Admin</a>
         </div>
@@ -109,13 +113,9 @@
 
     <!-- TEMPLATE: HOME -->
     <template id="template-home">
-        <!-- Seção Herói com Vídeo -->
-        <section class="relative h-[70vh] md:h-[80vh] flex items-center justify-center text-center text-white overflow-hidden">
-             <video id="hero-video-element" autoplay loop muted playsinline class="hero-video">
-                <!-- Vídeo de Pexels, por Tima Miroshnichenko -->
-                <source src="https://videos.pexels.com/video-files/8148813/8148813-hd_1280_720_25fps.mp4" type="video/mp4">
-                Seu navegador não suporta a tag de vídeo.
-            </video>
+        <!-- Seção Herói com Slider de Imagens -->
+        <section id="hero-section" class="relative h-[70vh] md:h-[80vh] flex items-center justify-center text-center text-white overflow-hidden">
+            <!-- As imagens do slider serão injetadas aqui pelo JS -->
             <div class="absolute inset-0 bg-black opacity-60 z-10"></div>
             <div class="relative z-20 p-6">
                 <h1 id="home-headline" class="text-4xl md:text-7xl font-black uppercase tracking-wider"></h1>
@@ -350,7 +350,7 @@
                         <hr class="my-8 border-gray-700">
                         <h3 class="text-xl font-bold mb-4">Meu Endereço de Entrega</h3>
                         <form id="address-form">
-                            <div class="space-y-4">
+                            <div class="space-y-6">
                                 <div>
                                     <label for="cpf" class="block text-sm font-semibold mb-2 text-gray-300">CPF</label>
                                     <input type="text" id="cpf" name="cpf" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" required>
@@ -363,7 +363,7 @@
                                     <label for="street" class="block text-sm font-semibold mb-2 text-gray-300">Logradouro</label>
                                     <input type="text" id="street" name="street" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" required>
                                 </div>
-                                <div class="grid grid-cols-2 gap-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label for="number" class="block text-sm font-semibold mb-2 text-gray-300">Número</label>
                                         <input type="text" id="number" name="number" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" required>
@@ -377,8 +377,8 @@
                                     <label for="neighborhood" class="block text-sm font-semibold mb-2 text-gray-300">Bairro</label>
                                     <input type="text" id="neighborhood" name="neighborhood" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" required>
                                 </div>
-                                <div class="grid grid-cols-3 gap-4">
-                                    <div class="col-span-2">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div class="md:col-span-2">
                                         <label for="city" class="block text-sm font-semibold mb-2 text-gray-300">Cidade</label>
                                         <input type="text" id="city" name="city" class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" required>
                                     </div>
@@ -388,7 +388,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg mt-6">Salvar Endereço</button>
+                            <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg mt-8 text-lg">Salvar Endereço</button>
                         </form>
                     </div>
                     <!-- Order History -->
@@ -465,10 +465,16 @@
         <div class="flex flex-col md:flex-row min-h-screen">
             <!-- Sidebar (Admin) -->
             <aside class="w-full md:w-64 bg-gray-800 p-4">
-                <h2 class="text-xl font-bold mb-8 text-white">Painel de Controle</h2>
-                <nav id="admin-nav" class="flex flex-row md:flex-col md:space-y-2 space-x-2 md:space-x-0 overflow-x-auto">
+                <div class="flex justify-between items-center text-white mb-4 md:mb-8">
+                    <h2 class="text-xl font-bold">Painel de Controle</h2>
+                    <button id="admin-mobile-menu-button" class="md:hidden">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                    </button>
+                </div>
+                <nav id="admin-nav" class="hidden md:flex flex-col space-y-2">
                     <a href="#admin" data-section="dashboard" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg hover:bg-gray-700"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg> Dashboard</a>
                     <a href="#admin" data-section="paginas" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg hover:bg-gray-700"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg> Páginas</a>
+                    <a href="#admin" data-section="hero-images" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg hover:bg-gray-700"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> Banners da Home</a>
                     <a href="#admin" data-section="noticias" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg hover:bg-gray-700"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 12h6m-1 8h.01"></path></svg> Notícias</a>
                     <a href="#admin" data-section="calendario" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg hover:bg-gray-700"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> Calendário</a>
                     <a href="#admin" data-section="galeria" class="admin-nav-link flex-shrink-0 flex items-center p-2 rounded-lg hover:bg-gray-700"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> Galeria</a>

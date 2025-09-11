@@ -1,6 +1,42 @@
 body {
     font-family: 'Inter', sans-serif;
 }
+
+/* Skeleton Loader */
+.skeleton {
+    background-color: #374151; /* gray-700 */
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -150%;
+    width: 150%;
+    height: 100%;
+    background: linear-gradient(to right, transparent 0%, #4b5563 50%, transparent 100%); /* gray-600 */
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    100% {
+        left: 150%;
+    }
+}
+
+/* Scroll Animations */
+.fade-in-element {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.fade-in-element.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
 .nav-link.active {
     color: #dc2626; /* Cor vermelha para o link ativo */
     font-weight: 700;

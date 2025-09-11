@@ -110,3 +110,57 @@ exports.createPagSeguroCheckout = functions.runWith({ secrets: ["PAGSEGURO_TOKEN
         throw new functions.https.HttpsError('internal', 'Could not create a PagSeguro checkout session.', error.message);
     }
 });
+
+exports.updateTrackingStatus = functions.pubsub.schedule('every 4 hours').onRun(async (context) => {
+    const frenetToAppStatusMap = {
+        'ENTREGUE': 'DELIVERED',
+        'AGUARDANDO_RETIRADA': 'IN_TRANSIT', // Or a new custom status
+        'EM_TRANSITO': 'IN_TRANSIT',
+        'SAIU_PARA_ENTREGA': 'OUT_FOR_DELIVERY',
+        'DEVOLVIDO_AO_REMETENTE': 'CANCELED', // Or a new 'RETURNED' status
+        'POSTADO': 'SHIPPED',
+    };
+
+    const ordersRef = admin.firestore().collection('orders');
+    const statusesToTrack = ['SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'];
+    const snapshot = await ordersRef.where('status', 'in', statusesToTrack).get();
+
+    if (snapshot.empty) {
+        console.log('No orders to track.');
+        return null;
+    }
+
+    const promises = [];
+    snapshot.forEach(doc => {
+        const order = doc.data();
+        if (order.trackingCode) {
+            const trackingPromise = axios.post('https://api.frenet.com.br/shipping/trackinginfo', {
+                ShippingServiceCode: null,
+                TrackingNumber: order.trackingCode,
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'token': '4692D145RD022R4DCARA04ER34EA62422852'
+                }
+            }).then(response => {
+                const trackingEvents = response.data.TrackingEvents;
+                if (trackingEvents && trackingEvents.length > 0) {
+                    const latestEvent = trackingEvents[trackingEvents.length - 1];
+                    const frenetStatus = latestEvent.EventTypeCode; // Assuming this is the status code
+                    const newAppStatus = frenetToAppStatusMap[frenetStatus];
+
+                    if (newAppStatus && newAppStatus !== order.status) {
+                        console.log(`Updating order ${doc.id} from ${order.status} to ${newAppStatus}`);
+                        return doc.ref.update({ status: newAppStatus });
+                    }
+                }
+            }).catch(error => {
+                console.error(`Failed to track order ${doc.id}:`, error.response ? error.response.data : error.message);
+            });
+            promises.push(trackingPromise);
+        }
+    });
+
+    await Promise.all(promises);
+    return null;
+});

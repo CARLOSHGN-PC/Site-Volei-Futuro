@@ -70,6 +70,7 @@ let appState = {
 };
 
 let cart = [];
+let currentGalleryIndex = 0;
 
 const orderStatusMap = {
     PENDING: 'Pendente',
@@ -98,6 +99,55 @@ function renderPage(templateId) {
         appRoot.innerHTML = '';
         appRoot.appendChild(template.content.cloneNode(true));
     }
+}
+
+function getSkeletonHTML(count, type) {
+    let skeletonItems = '';
+    for (let i = 0; i < count; i++) {
+        if (type === 'news' || type === 'gallery') {
+            skeletonItems += `
+                <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg">
+                    <div class="w-full h-48 skeleton"></div>
+                    <div class="p-6">
+                        <div class="h-4 w-1/4 mb-4 skeleton"></div>
+                        <div class="h-6 w-3/4 mb-2 skeleton"></div>
+                        <div class="h-4 w-full skeleton"></div>
+                        <div class="h-4 w-5/6 skeleton mt-2"></div>
+                    </div>
+                </div>`;
+        } else if (type === 'shop') {
+            skeletonItems += `
+                <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg flex flex-col">
+                    <div class="w-full h-64 skeleton"></div>
+                    <div class="p-6 text-center flex-grow flex flex-col items-center">
+                        <div class="h-6 w-3/4 mb-4 skeleton"></div>
+                        <div class="h-8 w-1/2 mb-4 skeleton"></div>
+                        <div class="h-10 w-full skeleton rounded-lg"></div>
+                    </div>
+                </div>`;
+        }
+    }
+    return skeletonItems;
+}
+
+function observeElements(selector) {
+    const elements = document.querySelectorAll(selector);
+    if (elements.length === 0) return;
+
+    const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target); // Stop observing once it's visible
+            }
+        });
+    }, {
+        threshold: 0.1 // Trigger when 10% of the element is visible
+    });
+
+    elements.forEach(element => {
+        observer.observe(element);
+    });
 }
 
 async function handleProfileUpdate(e) {
@@ -151,20 +201,24 @@ function renderHomePage() {
     }
 
     const newsGrid = document.getElementById('home-news-grid');
-    if (!newsGrid) return;
-    newsGrid.innerHTML = '';
-    appState.news.slice(0, 3).forEach(article => {
-        newsGrid.innerHTML += `
-            <div class="bg-gray-900 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-2 transition duration-300">
-                <img src="${article.image}" class="w-full h-48 object-cover">
-                <div class="p-6">
-                    <span class="text-sm text-red-500">${article.date}</span>
-                    <h3 class="text-xl font-bold mt-2 mb-3">${article.title}</h3>
-                    <p class="text-gray-400 text-sm mb-4">${article.content}</p>
-                    <a href="#noticias" class="font-semibold text-red-600 hover:text-red-500">Leia mais &rarr;</a>
+    if (newsGrid) {
+        if (appState.news.length === 0) {
+            newsGrid.innerHTML = getSkeletonHTML(3, 'news');
+        } else {
+            newsGrid.innerHTML = appState.news.slice(0, 3).map(article => `
+                <div class="bg-gray-900 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-2 transition duration-300 fade-in-element">
+                    <img src="${article.image}" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <span class="text-sm text-red-500">${article.date}</span>
+                        <h3 class="text-xl font-bold mt-2 mb-3">${article.title}</h3>
+                        <p class="text-gray-400 text-sm mb-4">${article.content}</p>
+                        <a href="#noticias" class="font-semibold text-red-600 hover:text-red-500">Leia mais &rarr;</a>
+                    </div>
                 </div>
-            </div>`;
-    });
+            `).join('');
+            observeElements('#home-news-grid > div');
+        }
+    }
 
     const sponsorsGrid = document.getElementById('sponsors-grid');
     if (sponsorsGrid) {
@@ -184,19 +238,23 @@ function renderAboutPage() {
 function renderNewsPage() {
     renderPage('template-noticias');
     const newsGrid = document.getElementById('all-news-grid');
-    if (!newsGrid) return;
-    newsGrid.innerHTML = '';
-    appState.news.forEach(article => {
-         newsGrid.innerHTML += `
-            <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg">
-                <img src="${article.image}" class="w-full h-48 object-cover">
-                <div class="p-6">
-                    <span class="text-sm text-red-500">${article.date}</span>
-                    <h3 class="text-xl font-bold mt-2 mb-3">${article.title}</h3>
-                    <p class="text-gray-400 text-sm">${article.content}</p>
+    if (newsGrid) {
+        if (appState.news.length === 0) {
+            newsGrid.innerHTML = getSkeletonHTML(6, 'news');
+        } else {
+            newsGrid.innerHTML = appState.news.map(article => `
+                <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg fade-in-element">
+                    <img src="${article.image}" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <span class="text-sm text-red-500">${article.date}</span>
+                        <h3 class="text-xl font-bold mt-2 mb-3">${article.title}</h3>
+                        <p class="text-gray-400 text-sm">${article.content}</p>
+                    </div>
                 </div>
-            </div>`;
-    });
+            `).join('');
+            observeElements('#all-news-grid > div');
+        }
+    }
 }
 
 function renderCalendarPage() {
@@ -233,32 +291,42 @@ function renderCalendarPage() {
 function renderGalleryPage() {
     renderPage('template-galeria');
     const galleryGrid = document.getElementById('gallery-grid');
-    if (!galleryGrid) return;
-    galleryGrid.innerHTML = appState.galleryImages.map(img => `
-        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group cursor-pointer" data-gallery-url="${img.url}">
-            <img src="${img.url.replace('1200x800', '600x400')}" alt="Foto da Galeria" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105">
-        </div>
-    `).join('') || '<p class="text-center text-gray-400 col-span-3">Nenhuma foto na galeria ainda.</p>';
+    if (galleryGrid) {
+        if (appState.galleryImages.length === 0) {
+            galleryGrid.innerHTML = getSkeletonHTML(6, 'gallery');
+        } else {
+            galleryGrid.innerHTML = appState.galleryImages.map(img => `
+                <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group cursor-pointer fade-in-element" data-gallery-url="${img.url}">
+                    <img src="${img.url.replace('1200x800', '600x400')}" alt="Foto da Galeria" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105">
+                </div>
+            `).join('');
+            observeElements('#gallery-grid > div');
+        }
+    }
 }
 
 function renderShopPage() {
     renderPage('template-loja');
     const productsGrid = document.getElementById('products-grid');
-    if(!productsGrid) return;
-    productsGrid.innerHTML = '';
-    appState.products.forEach(product => {
-        productsGrid.innerHTML += `
-            <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group flex flex-col">
-                <div class="cursor-pointer product-image-container" data-product-id="${product.id}">
-                    <img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover">
+    if (productsGrid) {
+        if (appState.products.length === 0) {
+            productsGrid.innerHTML = getSkeletonHTML(8, 'shop');
+        } else {
+            productsGrid.innerHTML = appState.products.map(product => `
+                <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg group flex flex-col fade-in-element">
+                    <div class="cursor-pointer product-image-container" data-product-id="${product.id}">
+                        <img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="p-6 text-center flex-grow flex flex-col">
+                        <h3 class="text-xl font-bold mb-2 flex-grow">${product.name}</h3>
+                        <p class="text-2xl font-semibold text-red-500 mb-4">R$ ${product.price.toFixed(2).replace('.', ',')}</p>
+                        <button data-add-to-cart="${product.id}" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Adicionar ao Carrinho</button>
+                    </div>
                 </div>
-                <div class="p-6 text-center flex-grow flex flex-col">
-                    <h3 class="text-xl font-bold mb-2 flex-grow">${product.name}</h3>
-                    <p class="text-2xl font-semibold text-red-500 mb-4">R$ ${product.price.toFixed(2).replace('.', ',')}</p>
-                    <button data-add-to-cart="${product.id}" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Adicionar ao Carrinho</button>
-                </div>
-            </div>`;
-    });
+            `).join('');
+            observeElements('#products-grid > div');
+        }
+    }
 }
 
 function renderCartPage() {
@@ -1663,10 +1731,22 @@ function closeMobileMenu() {
 // ===============================================================================
 // INICIALIZAÇÃO E EVENTOS GLOBAIS
 // ===============================================================================
+function openGalleryLightbox(startIndex) {
+    currentGalleryIndex = startIndex;
+    const imageUrl = appState.galleryImages[currentGalleryIndex]?.url;
+    if (!imageUrl) return;
+
+    const lightboxImage = document.getElementById('lightbox-image');
+    lightboxImage.src = imageUrl;
+
+    openModal('lightbox-modal');
+}
+
 function openModal(modalId, imageSrc = null, contentHTML = null) {
     const modal = document.getElementById(modalId);
     if (modal) {
         if (modalId === 'lightbox-modal' && imageSrc) {
+            // This is now handled by openGalleryLightbox, but we keep it for other potential uses
             document.getElementById('lightbox-image').src = imageSrc;
         }
         if (modalId === 'generic-modal' && contentHTML) {
@@ -1764,30 +1844,37 @@ function addEventListeners() {
     const userDropdownMenu = document.getElementById('user-dropdown-menu');
 
     userMenuButton.addEventListener('click', (e) => {
-        e.stopPropagation(); // Prevent the document click listener from firing immediately
+        e.stopPropagation();
         userDropdownMenu.classList.toggle('hidden');
     });
 
+    document.getElementById('lightbox-prev').addEventListener('click', (e) => {
+        e.stopPropagation();
+        currentGalleryIndex = (currentGalleryIndex - 1 + appState.galleryImages.length) % appState.galleryImages.length;
+        document.getElementById('lightbox-image').src = appState.galleryImages[currentGalleryIndex].url;
+    });
+
+    document.getElementById('lightbox-next').addEventListener('click', (e) => {
+        e.stopPropagation();
+        currentGalleryIndex = (currentGalleryIndex + 1) % appState.galleryImages.length;
+        document.getElementById('lightbox-image').src = appState.galleryImages[currentGalleryIndex].url;
+    });
+
     document.addEventListener('click', e => {
-        // Close dropdown if clicked outside
         if (!userMenuButton.contains(e.target) && !userDropdownMenu.contains(e.target)) {
             userDropdownMenu.classList.add('hidden');
         }
 
-        // Main navigation
         const navLink = e.target.closest('a[href^="#"]');
         if (navLink && !navLink.closest('#admin-nav')) {
             e.preventDefault();
             const pageId = navLink.getAttribute('href').substring(1);
             if (navLink.closest('#mobile-menu')) closeMobileMenu();
-            if (navLink.closest('#user-dropdown-menu')) {
-                userDropdownMenu.classList.add('hidden');
-            }
+            if (navLink.closest('#user-dropdown-menu')) userDropdownMenu.classList.add('hidden');
             if (pageId) navigateTo(pageId);
             return;
         }
 
-        // Modal closing
         const closeModalButton = e.target.closest('[data-close-modal]');
         if (closeModalButton) {
             closeModal(closeModalButton.dataset.closeModal);
@@ -1798,14 +1885,16 @@ function addEventListeners() {
             return;
         }
 
-        // Gallery
         const galleryImage = e.target.closest('[data-gallery-url]');
         if (galleryImage) {
-            openModal('lightbox-modal', galleryImage.dataset.galleryUrl);
+            const url = galleryImage.dataset.galleryUrl;
+            const startIndex = appState.galleryImages.findIndex(img => img.url.includes(url.split('/').pop()));
+            if (startIndex !== -1) {
+                openGalleryLightbox(startIndex);
+            }
             return;
         }
 
-        // Shop
         const calculateShippingButton = e.target.closest('#calculate-shipping-btn');
         if (calculateShippingButton) {
             handleCalculateShipping();
@@ -1819,9 +1908,7 @@ function addEventListeners() {
         const addToCartButton = e.target.closest('[data-add-to-cart]');
         if (addToCartButton) {
             addToCart(addToCartButton.dataset.addToCart);
-            if (addToCartButton.dataset.closeModal) {
-                closeModal(addToCartButton.dataset.closeModal);
-            }
+            if (addToCartButton.dataset.closeModal) closeModal(addToCartButton.dataset.closeModal);
             return;
         }
         const updateCartButton = e.target.closest('[data-update-cart]');
@@ -1841,14 +1928,12 @@ function addEventListeners() {
             return;
         }
 
-        // Login
         const forgotPasswordLink = e.target.closest('[data-forgot-password]');
         if (forgotPasswordLink) {
             openForgotPasswordModal(e);
             return;
         }
 
-        // Admin Actions
         const logoutButton = e.target.closest('#logout-button-user');
         if (logoutButton) {
             signOut(auth);
@@ -1870,9 +1955,7 @@ function addEventListeners() {
                 'delete-sponsor': () => deleteSponsor(id),
                 'open-order-modal': () => openOrderModal(id),
             };
-            if (actions[adminAction]) {
-                actions[adminAction]();
-            }
+            if (actions[adminAction]) actions[adminAction]();
             return;
         }
     });

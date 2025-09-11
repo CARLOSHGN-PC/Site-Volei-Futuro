@@ -223,7 +223,25 @@ app.post('/send-welcome-email', async (req, res) => {
 
     } catch (error) {
         console.error('Error verifying token or sending welcome email:', error);
-        res.status(401).json({ error: 'Invalid token or failed to send email.' });
+        // Check if the error is from SendGrid and has detailed info
+        if (error.response && error.response.body) {
+            return res.status(500).json({
+                error: 'Failed to send welcome email via SendGrid.',
+                details: error.response.body.errors
+            });
+        }
+        // Check if it's a token verification error
+        if (error.code && error.code.startsWith('auth/')) {
+            return res.status(401).json({
+                error: 'Invalid Firebase authentication token.',
+                details: error.message
+            });
+        }
+        // Generic error
+        res.status(500).json({
+            error: 'An unexpected error occurred while sending the welcome email.',
+            details: error.message
+        });
     }
 });
 

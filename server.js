@@ -3,6 +3,10 @@ const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
 const axios = require('axios');
+const sgMail = require('@sendgrid/mail');
+
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
 // Initialize Firebase Admin SDK
 // The credentials will be loaded from an environment variable
 // which the user will need to set up on Render.
@@ -155,6 +159,71 @@ app.post('/create-checkout', async (req, res) => {
     } catch (error) {
         console.error("Error creating PagSeguro checkout:", error.response ? error.response.data : error.message);
         res.status(500).json({ error: 'Could not create a PagSeguro checkout session.' });
+    }
+});
+
+app.post('/send-email', async (req, res) => {
+    const { to, from, subject, html, secret } = req.body;
+
+    if (secret !== process.env.EMAIL_ENDPOINT_SECRET) {
+        console.warn('Unauthorized attempt to send email.');
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!to || !from || !subject || !html) {
+        return res.status(400).json({ error: 'Missing required email fields.' });
+    }
+
+    const msg = { to, from, subject, html };
+
+    try {
+        await sgMail.send(msg);
+        res.status(200).json({ message: 'Email sent successfully.' });
+    } catch (error) {
+        console.error('Error sending email with SendGrid:', error);
+        if (error.response) {
+            console.error(error.response.body)
+        }
+        res.status(500).json({ error: 'Failed to send email.' });
+    }
+});
+
+app.post('/send-welcome-email', async (req, res) => {
+    const { token } = req.body;
+    if (!token) {
+        return res.status(400).json({ error: 'Auth token is required.' });
+    }
+
+    try {
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        const { name, email } = decodedToken;
+
+        const welcomeEmailHtml = `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                    <h1 style="color: #dc2626; text-align: center;">Bem-vindo ao Vôlei Futuro, ${name || ''}!</h1>
+                    <p>Olá ${name || 'atleta'},</p>
+                    <p>Sua conta em nosso site foi criada com sucesso. Estamos muito felizes por ter você em nossa comunidade.</p>
+                    <p>Fique à vontade para explorar nossa <a href="https://volei-futuro.onrender.com/#loja" style="color: #dc2626; text-decoration: none;">loja</a>, acompanhar as <a href="https://volei-futuro.onrender.com/#noticias" style="color: #dc2626; text-decoration: none;">notícias</a> e o <a href="https://volei-futuro.onrender.com/#calendario" style="color: #dc2626; text-decoration: none;">calendário de jogos</a>.</p>
+                    <p>Se precisar de algo, estamos à disposição.</p>
+                    <p style="margin-top: 30px;">Atenciosamente,<br><strong>Equipe Vôlei Futuro</strong></p>
+                </div>
+            </div>
+        `;
+
+        const msg = {
+            to: email,
+            from: 'contato@voleifuturo.com', // This MUST be a verified sender in your SendGrid account
+            subject: 'Seja Bem-vindo ao Vôlei Futuro!',
+            html: welcomeEmailHtml,
+        };
+
+        await sgMail.send(msg);
+        res.status(200).json({ message: 'Welcome email sent successfully.' });
+
+    } catch (error) {
+        console.error('Error verifying token or sending welcome email:', error);
+        res.status(401).json({ error: 'Invalid token or failed to send email.' });
     }
 });
 

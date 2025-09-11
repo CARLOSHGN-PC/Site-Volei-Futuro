@@ -418,11 +418,15 @@ async function handleRegistrationSubmit(e) {
         // Send welcome email via backend endpoint
         try {
             const token = await userCredential.user.getIdToken();
-            fetch('/send-welcome-email', {
+            const response = await fetch('/send-welcome-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: token })
             });
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("Failed to send welcome email. Server responded with:", errorData);
+            }
         } catch (emailError) {
             console.error("Could not send welcome email:", emailError);
         }

@@ -6,6 +6,7 @@ admin.initializeApp();
 
 // Define the PagSeguro token secret using the new method
 const PAGSEGURO_TOKEN = functions.params.defineSecret('PAGSEGURO_TOKEN');
+const FRENET_TOKEN = functions.params.defineSecret('FRENET_TOKEN');
 
 exports.createPagSeguroCheckout = functions.runWith({ secrets: ["PAGSEGURO_TOKEN"] }).https.onCall(async (data, context) => {
     // 1. Check if the user is authenticated.
@@ -111,7 +112,7 @@ exports.createPagSeguroCheckout = functions.runWith({ secrets: ["PAGSEGURO_TOKEN
     }
 });
 
-exports.updateTrackingStatus = functions.pubsub.schedule('every 4 hours').onRun(async (context) => {
+exports.updateTrackingStatus = functions.runWith({ secrets: ["FRENET_TOKEN"] }).pubsub.schedule('every 4 hours').onRun(async (context) => {
     const frenetToAppStatusMap = {
         'ENTREGUE': 'DELIVERED',
         'AGUARDANDO_RETIRADA': 'IN_TRANSIT', // Or a new custom status
@@ -140,7 +141,7 @@ exports.updateTrackingStatus = functions.pubsub.schedule('every 4 hours').onRun(
             }, {
                 headers: {
                     'Content-Type': 'application/json',
-                    'token': '4692D145RD022R4DCARA04ER34EA62422852'
+                    'token': FRENET_TOKEN.value()
                 }
             }).then(response => {
                 const trackingEvents = response.data.TrackingEvents;

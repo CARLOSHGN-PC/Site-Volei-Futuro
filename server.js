@@ -26,7 +26,6 @@ app.get('/', (req, res) => {
 
 app.post('/calculate-shipping', async (req, res) => {
     const { cepDestino, items } = req.body;
-    const FRENET_API_TOKEN = "4692D145RD022R4DCARA04ER34EA62422852";
 
     if (!cepDestino || !items) {
         return res.status(400).json({ error: 'CEP de destino e itens do carrinho são obrigatórios.' });
@@ -49,7 +48,7 @@ app.post('/calculate-shipping', async (req, res) => {
         const response = await axios.post('https://api.frenet.com.br/shipping/quote', payload, {
             headers: {
                 'Content-Type': 'application/json',
-                'token': FRENET_API_TOKEN
+                'token': process.env.FRENET_TOKEN
             }
         });
 
@@ -156,35 +155,6 @@ app.post('/create-checkout', async (req, res) => {
     } catch (error) {
         console.error("Error creating PagSeguro checkout:", error.response ? error.response.data : error.message);
         res.status(500).json({ error: 'Could not create a PagSeguro checkout session.' });
-    }
-});
-
-app.post('/get-tracking-info', async (req, res) => {
-    const { trackingNumber } = req.body;
-    const FRENET_API_TOKEN = "4692D145RD022R4DCARA04ER34EA62422852";
-
-    if (!trackingNumber) {
-        return res.status(400).json({ error: 'Tracking number is required.' });
-    }
-
-    const payload = {
-        "ShippingServiceCode": null, // Can be null, Frenet will identify the carrier
-        "TrackingNumber": trackingNumber,
-    };
-
-    try {
-        const response = await axios.post('https://api.frenet.com.br/shipping/trackinginfo', payload, {
-            headers: {
-                'Content-Type': 'application/json',
-                'token': FRENET_API_TOKEN
-            }
-        });
-
-        res.json(response.data);
-
-    } catch (error) {
-        console.error('Erro ao rastrear com Frenet:', error.response ? error.response.data : error.message);
-        res.status(500).json({ error: 'Falha ao rastrear a encomenda.', details: error.message });
     }
 });
 

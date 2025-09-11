@@ -59,6 +59,7 @@ let appState = {
     news: [],
     registrations: [],
     galleryImages: [],
+    heroImages: [],
     shipping_options: [],
     currentUser: null,
     calculatedShipping: [],
@@ -191,12 +192,30 @@ function renderHomePage() {
     document.getElementById('home-headline').innerHTML = appState.pageContent.home.headline || "Carregando...";
     document.getElementById('home-subheadline').innerHTML = appState.pageContent.home.subheadline || "";
 
-    const videoElement = document.getElementById('hero-video-element');
-    if (videoElement && appState.pageContent.home.backgroundVideoUrl) {
-        const sourceElement = videoElement.querySelector('source');
-        if (sourceElement) {
-            sourceElement.src = appState.pageContent.home.backgroundVideoUrl;
-            videoElement.load(); // Reload the video with the new source
+    // Hero Slider Logic
+    const heroSection = document.getElementById('hero-section');
+    if (heroSection) {
+        if (appState.heroImages.length > 0) {
+            let currentSlide = 0;
+            appState.heroImages.forEach((img, index) => {
+                const slide = document.createElement('img');
+                slide.src = img.url;
+                slide.className = 'hero-slide';
+                if (index === 0) {
+                    slide.classList.add('active');
+                }
+                heroSection.prepend(slide);
+            });
+
+            setInterval(() => {
+                const slides = heroSection.querySelectorAll('.hero-slide');
+                slides[currentSlide].classList.remove('active');
+                currentSlide = (currentSlide + 1) % slides.length;
+                slides[currentSlide].classList.add('active');
+            }, 5000); // Change image every 5 seconds
+        } else {
+            // Fallback if no images are uploaded
+            heroSection.style.backgroundColor = '#1f2937'; // gray-800
         }
     }
 
@@ -450,13 +469,26 @@ function renderAdminPage() {
         return;
     }
     renderPage('template-admin');
+
     const adminNav = document.getElementById('admin-nav');
+    const adminMenuButton = document.getElementById('admin-mobile-menu-button');
+
+    if (adminMenuButton && adminNav) {
+        adminMenuButton.addEventListener('click', () => {
+            adminNav.classList.toggle('hidden');
+        });
+    }
+
     if (adminNav) {
         adminNav.addEventListener('click', (e) => {
             const link = e.target.closest('.admin-nav-link');
             if (link && link.dataset.section) {
                 e.preventDefault();
                 renderAdminSection(link.dataset.section);
+                // Hide menu on mobile after selection
+                if (window.innerWidth < 768) {
+                    adminNav.classList.add('hidden');
+                }
             }
         });
     }
@@ -582,12 +614,14 @@ function addToCart(productId, quantity = 1) {
 }
 
 function updateCartBadge() {
-    const badge = document.getElementById('cart-badge');
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    if (badge) {
-        badge.textContent = totalItems;
-        badge.style.display = totalItems > 0 ? 'flex' : 'none';
-    }
+    const badges = document.querySelectorAll('#cart-badge-desktop, #cart-badge-mobile');
+    badges.forEach(badge => {
+        if (badge) {
+            badge.textContent = totalItems;
+            badge.style.display = totalItems > 0 ? 'flex' : 'none';
+        }
+    });
 }
 
 function updateCartDisplay() {
@@ -843,8 +877,8 @@ function renderAdminSection(section) {
     }
     const renderers = {
         'dashboard': renderAdminDashboard, 'paginas': renderAdminPages, 'noticias': renderAdminNews,
-        'calendario': renderAdminCalendar, 'galeria': renderAdminGallery, 'loja': renderAdminShop,
-        'frete-gratis': renderAdminFreeShipping, 'sponsors': renderAdminSponsors,
+        'hero-images': renderAdminHeroImages, 'calendario': renderAdminCalendar, 'galeria': renderAdminGallery,
+        'loja': renderAdminShop, 'frete-gratis': renderAdminFreeShipping, 'sponsors': renderAdminSponsors,
         'orders': renderAdminOrders, 'privacy': renderAdminPrivacy, 'inscricoes': renderAdminRegistrations,
     };
     if(renderers[section]) renderers[section]();
@@ -1604,6 +1638,73 @@ async function deleteGalleryImage(id) {
     if (confirm('Tem certeza?')) await deleteDoc(getDocRef('galleryImages', id));
 }
 
+function renderAdminHeroImages() {
+    const contentArea = adminContentArea();
+    if (!contentArea) return;
+
+    contentArea.innerHTML = `
+        <h2 class="text-2xl font-bold mb-4">Gerenciar Banners da Home</h2>
+        <form id="hero-image-form" class="mb-8 bg-gray-800 p-6 rounded-lg">
+            <label for="heroImageFile" class="block text-sm font-semibold mb-2 text-gray-300">Novo Banner</label>
+            <div class="flex gap-4 items-start">
+                <input type="file" id="heroImageFile" name="imageFile" class="flex-grow w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-4" required>
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Adicionar Banner</button>
+            </div>
+        </form>
+        <div class="bg-gray-800 rounded-lg overflow-x-auto">
+            <table class="w-full text-left min-w-max">
+                <thead class="bg-gray-700">
+                    <tr>
+                        <th class="p-4">Imagem</th>
+                        <th class="p-4">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${appState.heroImages.map(img => `
+                        <tr class="border-b border-gray-700">
+                            <td class="p-4"><img src="${img.url}" class="h-16 w-32 object-cover rounded"></td>
+                            <td class="p-4">
+                                <button data-admin-action="delete-hero-image" data-id="${img.id}" class="text-red-500 hover:text-red-400">Excluir</button>
+                            </td>
+                        </tr>
+                    `).join('') || '<tr><td colspan="2" class="p-4 text-center text-gray-400">Nenhum banner encontrado.</td></tr>'}
+                </tbody>
+            </table>
+        </div>`;
+
+    document.getElementById('hero-image-form').addEventListener('submit', saveHeroImage);
+}
+
+async function saveHeroImage(e) {
+    e.preventDefault();
+    const form = e.target;
+    const imageFile = form.imageFile.files[0];
+    if (!imageFile) {
+        showCustomAlert('Erro', 'Por favor, selecione uma imagem para enviar.');
+        return;
+    }
+
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Enviando...';
+
+    const imageUrl = await uploadImage(imageFile);
+
+    if (imageUrl) {
+        await addDoc(getCollectionRef('heroImages'), { url: imageUrl, createdAt: new Date() });
+        form.reset();
+    }
+
+    submitButton.disabled = false;
+    submitButton.textContent = 'Adicionar Banner';
+}
+
+async function deleteHeroImage(id) {
+    if (confirm('Tem certeza que deseja excluir este banner?')) {
+        await deleteDoc(getDocRef('heroImages', id));
+    }
+}
+
 const IMGBB_API_KEY = "163a5cae060857c200bca8b90c5dd652";
 
 async function uploadImage(imageFile) {
@@ -1766,7 +1867,7 @@ function closeModal(modalId) {
 }
 
 function setupRealtimeListeners() {
-    const collections = ['calendarEvents', 'products', 'news', 'registrations', 'galleryImages', 'sponsors', 'orders'];
+    const collections = ['calendarEvents', 'products', 'news', 'registrations', 'galleryImages', 'sponsors', 'orders', 'heroImages'];
     collections.forEach(col => {
         onSnapshot(getCollectionRef(col), snapshot => {
             appState[col] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -1949,6 +2050,7 @@ function addEventListeners() {
                 'open-calendar-modal': () => openCalendarEventModal(id),
                 'delete-calendar': () => deleteCalendarEvent(id),
                 'delete-gallery': () => deleteGalleryImage(id),
+                'delete-hero-image': () => deleteHeroImage(id),
                 'open-product-modal': () => openProductModal(id),
                 'delete-product': () => deleteProduct(id),
                 'open-sponsor-modal': () => openSponsorModal(id),

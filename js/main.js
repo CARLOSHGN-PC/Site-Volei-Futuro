@@ -594,6 +594,11 @@ async function renderAccountPage() {
 // LÓGICA DO CARRINHO (Frontend-only)
 // ===============================================================================
 function addToCart(productId, quantity = 1) {
+    if (!appState.currentUser) {
+        showCustomAlert('Login Necessário', 'Você precisa fazer login para adicionar itens ao carrinho.');
+        navigateTo('login');
+        return;
+    }
     const product = appState.products.find(p => p.id === productId);
     if (!product) return;
     const cartItem = cart.find(item => item.id === productId);
@@ -1926,7 +1931,8 @@ function handleInitialPageLoad() {
             listenersAttached = true;
         }
 
-        const initialPage = window.location.hash.substring(1) || 'home';
+        // Always start on the home page as requested by the user.
+        const initialPage = 'home';
 
         // If a logged-out user tries to access a protected page, redirect them.
         const protectedPages = ['account', 'admin'];

@@ -415,6 +415,18 @@ async function handleRegistrationSubmit(e) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(userCredential.user, { displayName: name });
 
+        // Send welcome email via backend endpoint
+        try {
+            const token = await userCredential.user.getIdToken();
+            fetch('/send-welcome-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token })
+            });
+        } catch (emailError) {
+            console.error("Could not send welcome email:", emailError);
+        }
+
         // Force a state change to update the UI
         appState.currentUser = auth.currentUser;
         handleUserAuthState(auth.currentUser);
@@ -1006,8 +1018,8 @@ function openOrderModal(id) {
 async function saveOrder(e) {
     e.preventDefault();
     const form = e.target;
-    const id = form.id.value;
-    const status = form.orderStatus.value;
+    const orderId = form.id.value;
+    const newStatus = form.orderStatus.value;
     const trackingCode = form.trackingCode.value;
 
     const submitButton = form.querySelector('button[type="submit"]');
@@ -1015,8 +1027,12 @@ async function saveOrder(e) {
     submitButton.textContent = 'Salvando...';
 
     try {
-        await updateDoc(getDocRef('orders', id), { status, trackingCode });
+        const updateOrderStatus = httpsCallable(functions, 'updateOrderStatus');
+        await updateOrderStatus({ orderId, newStatus, trackingCode });
+
         closeModal('generic-modal');
+        showCustomAlert('Sucesso!', 'O pedido foi atualizado e o cliente notificado.');
+
     } catch (error) {
         console.error('Erro ao salvar pedido:', error);
         showCustomAlert('Erro', 'Não foi possível salvar as alterações do pedido.');

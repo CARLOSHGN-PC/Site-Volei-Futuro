@@ -25,7 +25,8 @@ import {
     query,
     where,
     orderBy,
-    getDocs
+    getDocs,
+    getDoc
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
@@ -69,6 +70,17 @@ let appState = {
 };
 
 let cart = [];
+
+const orderStatusMap = {
+    PENDING: 'Pendente',
+    PAYMENT_APPROVED: 'Pagamento Aprovado',
+    PROCESSING: 'Em Separação',
+    SHIPPED: 'Enviado',
+    IN_TRANSIT: 'Em Trânsito',
+    OUT_FOR_DELIVERY: 'Saiu para Entrega',
+    DELIVERED: 'Entregue',
+    CANCELED: 'Cancelado'
+};
 
 // ===============================================================================
 // ELEMENTOS GLOBAIS
@@ -407,6 +419,28 @@ async function renderAccountPage() {
     // Add event listeners for profile and password forms
     document.getElementById('profile-form').addEventListener('submit', handleProfileUpdate);
     document.getElementById('password-form').addEventListener('submit', handlePasswordUpdate);
+    document.getElementById('address-form').addEventListener('submit', saveUserAddress);
+
+    // Fetch and display user address
+    const userDocRef = doc(db, 'users', appState.currentUser.uid);
+    const docSnap = await getDoc(userDocRef);
+
+    if (docSnap.exists()) {
+        const userData = docSnap.data();
+        const addressForm = document.getElementById('address-form');
+        if (addressForm) {
+            addressForm.cpf.value = userData.cpf || '';
+            if (userData.address) {
+                addressForm.zipcode.value = userData.address.zipcode || '';
+                addressForm.street.value = userData.address.street || '';
+                addressForm.number.value = userData.address.number || '';
+                addressForm.complement.value = userData.address.complement || '';
+                addressForm.neighborhood.value = userData.address.neighborhood || '';
+                addressForm.city.value = userData.address.city || '';
+                addressForm.state.value = userData.address.state || '';
+            }
+        }
+    }
 
     // Fetch and display order history
     const orderHistoryContainer = document.getElementById('order-history-container');
@@ -438,7 +472,7 @@ async function renderAccountPage() {
                         </div>
                         <div class="text-right">
                             <p class="font-bold text-lg text-red-500">R$ ${total}</p>
-                            <p class="text-sm font-semibold">${order.status || 'PENDENTE'}</p>
+                            <p class="text-sm font-semibold">${orderStatusMap[order.status] || order.status || 'PENDENTE'}</p>
                         </div>
                     </div>
                     <ul class="list-disc list-inside text-gray-300 mb-2">
@@ -668,6 +702,18 @@ async function handleCheckout() {
         return;
     }
 
+    // Check for user address
+    const userDocRef = doc(db, 'users', appState.currentUser.uid);
+    const docSnap = await getDoc(userDocRef);
+
+    if (!docSnap.exists() || !docSnap.data().cpf || !docSnap.data().address || !docSnap.data().address.zipcode) {
+        showCustomAlert("Endereço Incompleto", "Por favor, preencha seu CPF e endereço completo na página 'Minha Conta' antes de finalizar a compra.");
+        navigateTo('account');
+        return;
+    }
+    const userData = docSnap.data();
+
+
     const selectedShipping = document.querySelector('input[name="shipping-option"]:checked');
     if (!selectedShipping && appState.calculatedShipping.length > 0) {
         showCustomAlert("Frete Necessário", "Por favor, selecione uma opção de frete.");
@@ -691,6 +737,10 @@ async function handleCheckout() {
                 userId: appState.currentUser.uid,
                 userEmail: appState.currentUser.email,
                 userName: appState.currentUser.displayName,
+                customer: {
+                    cpf: userData.cpf,
+                    address: userData.address
+                }
             }),
         });
 
@@ -783,7 +833,7 @@ function renderAdminOrders() {
                 <td class="p-4">${orderDate}</td>
                 <td class="p-4">${order.userName || order.userEmail}</td>
                 <td class="p-4">R$ ${total}</td>
-                <td class="p-4">${order.status || 'PENDENTE'}</td>
+                <td class="p-4">${orderStatusMap[order.status] || order.status || 'PENDENTE'}</td>
                 <td class="p-4">
                     <button data-admin-action="open-order-modal" data-id="${order.id}" class="text-green-400 hover:text-green-300">Editar</button>
                 </td>
@@ -823,8 +873,11 @@ function openOrderModal(id) {
                 <label for="orderStatus" class="block text-sm font-semibold mb-2 text-gray-300">Status do Pedido</label>
                 <select id="orderStatus" name="orderStatus" class="w-full bg-gray-700 p-2 rounded">
                     <option value="PENDING" ${order.status === 'PENDING' ? 'selected' : ''}>Pendente</option>
-                    <option value="PROCESSING" ${order.status === 'PROCESSING' ? 'selected' : ''}>Processando</option>
+                    <option value="PAYMENT_APPROVED" ${order.status === 'PAYMENT_APPROVED' ? 'selected' : ''}>Pagamento Aprovado</option>
+                    <option value="PROCESSING" ${order.status === 'PROCESSING' ? 'selected' : ''}>Em Separação</option>
                     <option value="SHIPPED" ${order.status === 'SHIPPED' ? 'selected' : ''}>Enviado</option>
+                    <option value="IN_TRANSIT" ${order.status === 'IN_TRANSIT' ? 'selected' : ''}>Em Trânsito</option>
+                    <option value="OUT_FOR_DELIVERY" ${order.status === 'OUT_FOR_DELIVERY' ? 'selected' : ''}>Saiu para Entrega</option>
                     <option value="DELIVERED" ${order.status === 'DELIVERED' ? 'selected' : ''}>Entregue</option>
                     <option value="CANCELED" ${order.status === 'CANCELED' ? 'selected' : ''}>Cancelado</option>
                 </select>
@@ -863,6 +916,39 @@ async function saveOrder(e) {
     } finally {
         submitButton.disabled = false;
         submitButton.textContent = 'Salvar';
+    }
+}
+
+async function saveUserAddress(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const addressData = {
+        cpf: formData.get('cpf'),
+        address: {
+            zipcode: formData.get('zipcode'),
+            street: formData.get('street'),
+            number: formData.get('number'),
+            complement: formData.get('complement'),
+            neighborhood: formData.get('neighborhood'),
+            city: formData.get('city'),
+            state: formData.get('state'),
+        }
+    };
+
+    if (!appState.currentUser) {
+        showCustomAlert('Erro', 'Você precisa estar logado para salvar seu endereço.');
+        return;
+    }
+
+    const userDocRef = doc(db, 'users', appState.currentUser.uid);
+
+    try {
+        await setDoc(userDocRef, { ...addressData }, { merge: true });
+        showCustomAlert('Sucesso!', 'Seu endereço foi salvo.');
+    } catch (error) {
+        console.error("Erro ao salvar endereço: ", error);
+        showCustomAlert('Erro', 'Houve um problema ao salvar seu endereço.');
     }
 }
 

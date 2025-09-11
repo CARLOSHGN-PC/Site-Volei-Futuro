@@ -75,10 +75,13 @@ app.post('/calculate-shipping', async (req, res) => {
 });
 
 app.post('/create-checkout', async (req, res) => {
-    const { items, shipping, userId, userEmail, userName } = req.body;
+    const { items, shipping, userId, userEmail, userName, customer } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Cart items are required.' });
+    }
+    if (!customer || !customer.cpf || !customer.address) {
+        return res.status(400).json({ error: 'Customer CPF and address are required.' });
     }
 
     const orderItems = items.map(item => ({
@@ -97,14 +100,20 @@ app.post('/create-checkout', async (req, res) => {
         "customer": {
             "name": userName || 'Anonymous User',
             "email": userEmail,
+            "tax_id": customer.cpf.replace(/\D/g, ''),
         },
         "items": orderItems,
         "shipping": {
             "amount": shippingCost,
             "address": {
-                "street": "Avenida Brigadeiro Faria Lima", "number": "1384", "complement": "apto 132",
-                "locality": "Jardim Paulistano", "city": "Sao Paulo", "region_code": "SP",
-                "country": "BRA", "postal_code": "01451001"
+                "street": customer.address.street,
+                "number": customer.address.number,
+                "complement": customer.address.complement,
+                "locality": customer.address.neighborhood,
+                "city": customer.address.city,
+                "region_code": customer.address.state,
+                "country": "BRA",
+                "postal_code": customer.address.zipcode.replace(/\D/g, ''),
             }
         },
         "notification_urls": [],

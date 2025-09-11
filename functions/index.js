@@ -31,24 +31,29 @@ exports.createPagSeguroCheckout = functions.runWith({ secrets: ["PAGSEGURO_TOKEN
     const shippingCost = data.shipping ? Math.round(data.shipping.cost * 100) : 0;
     const totalAmount = subtotal + shippingCost;
 
+    if (!data.customer || !data.customer.cpf || !data.customer.address) {
+        throw new functions.https.HttpsError('invalid-argument', 'The function must be called with customer CPF and address.');
+    }
+
     const payload = {
         "reference_id": orderReferenceId,
         "customer": {
             "name": context.auth.token.name || 'Anonymous User',
             "email": context.auth.token.email,
+            "tax_id": data.customer.cpf.replace(/\D/g, ''),
         },
         "items": items,
         "shipping": {
             "amount": shippingCost,
             "address": {
-              "street": "Avenida Brigadeiro Faria Lima",
-              "number": "1384",
-              "complement": "apto 132",
-              "locality": "Jardim Paulistano",
-              "city": "Sao Paulo",
-              "region_code": "SP",
-              "country": "BRA",
-              "postal_code": "01451001"
+                "street": data.customer.address.street,
+                "number": data.customer.address.number,
+                "complement": data.customer.address.complement,
+                "locality": data.customer.address.neighborhood,
+                "city": data.customer.address.city,
+                "region_code": data.customer.address.state,
+                "country": "BRA",
+                "postal_code": data.customer.address.zipcode.replace(/\D/g, ''),
             }
         },
         "notification_urls": [],

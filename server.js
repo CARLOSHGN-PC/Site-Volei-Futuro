@@ -4,7 +4,7 @@ const cors = require('cors');
 const admin = require('firebase-admin');
 const axios = require('axios');
 const sgMail = require('@sendgrid/mail');
-const { MercadoPagoConfig, Preference } = require('mercadopago');
+const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
@@ -80,89 +80,68 @@ app.post('/calculate-shipping', async (req, res) => {
     }
 });
 
-app.post('/create-checkout', async (req, res) => {
-    const { items, shipping, userId, userEmail, userName, customer } = req.body;
+app.post('/process-payment', async (req, res) => {
+    const { formData, items, shipping, userId, userEmail, userName } = req.body;
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ error: 'Cart items are required.' });
-    }
-    if (!customer || !customer.cpf || !customer.address) {
-        return res.status(400).json({ error: 'Customer CPF and address are required.' });
-    }
-
-    const orderItems = items.map(item => ({
-        "title": item.name,
-        "quantity": Number(item.quantity),
-        "unit_price": Number(item.price),
-        "currency_id": "BRL"
-    }));
-
-    const subtotal = orderItems.reduce((total, item) => total + (item.unit_price * item.quantity), 0);
-    const shippingCost = shipping ? Number(shipping.cost) : 0;
-    const totalAmount = (subtotal + shippingCost) * 100; // Store as integer in Firestore for consistency
-    const orderReferenceId = `ref_${userId}_${new Date().getTime()}`;
-
-    const preference = new Preference(client);
+    const payment = new Payment(client);
 
     try {
-        const result = await preference.create({
+        const result = await payment.create({
             body: {
-                items: orderItems,
+                transaction_amount: formData.transaction_amount,
+                token: formData.token,
+                description: formData.description,
+                installments: formData.installments,
+                payment_method_id: formData.payment_method_id,
+                issuer_id: formData.issuer_id,
                 payer: {
-                    email: userEmail,
-                    name: userName || 'Anonymous User',
+                    email: formData.payer.email,
                     identification: {
-                        type: 'CPF',
-                        number: customer.cpf.replace(/\D/g, '')
+                        type: formData.payer.identification.type,
+                        number: formData.payer.identification.number
                     }
-                },
-                shipments: {
-                    cost: shippingCost,
-                    mode: 'not_specified',
-                },
-                external_reference: orderReferenceId,
-                back_urls: {
-                    success: 'https://volei-futuro.onrender.com/#account',
-                    failure: 'https://volei-futuro.onrender.com/#carrinho',
-                    pending: 'https://volei-futuro.onrender.com/#account'
-                },
-                auto_return: 'approved',
-                statement_descriptor: 'VOLEIFUTURO',
+                }
             }
         });
 
-        const checkoutLink = result.init_point;
+        // Save order to Firestore
+        const orderReferenceId = `ref_${userId}_${new Date().getTime()}`;
+        const totalAmount = formData.transaction_amount * 100; // Store as integer cents
 
-        // Save order to Firestore (in a separate try-catch to not block checkout)
         try {
             const orderPayload = {
                 userId: userId,
-                mercadopagoPreferenceId: result.id,
+                mercadopagoPaymentId: result.id,
                 referenceId: orderReferenceId,
                 createdAt: new Date(),
-                items: items.map(item => ({
-                    name: item.name,
-                    quantity: item.quantity,
-                    unit_amount: Math.round(item.price * 100) // Keep consistent format for Firestore
-                })),
+                items: items, // Passed from frontend
                 shipping: shipping,
                 totalAmount: Math.round(totalAmount),
-                status: 'PENDING'
+                status: result.status === 'approved' ? 'PAYMENT_APPROVED' : 'PENDING', // Basic mapping
+                paymentDetails: {
+                    status: result.status,
+                    status_detail: result.status_detail,
+                    payment_method_id: result.payment_method_id,
+                    payment_type_id: result.payment_type_id
+                }
             };
             await admin.firestore().collection('orders').add(orderPayload);
         } catch (dbError) {
             console.error("Error saving order to Firestore:", dbError);
-            // Proceed with checkout even if saving order fails (user can contact support)
         }
 
-        res.json({ checkoutUrl: checkoutLink });
+        res.json({
+            id: result.id,
+            status: result.status,
+            status_detail: result.status_detail
+        });
 
     } catch (error) {
-        console.error("Error creating Mercado Pago preference:", error);
+        console.error("Error processing payment:", error);
         if (error.cause) {
             console.error('Cause:', JSON.stringify(error.cause, null, 2));
         }
-        res.status(500).json({ error: 'Could not create a Mercado Pago checkout session.' });
+        res.status(500).json({ error: 'Could not process payment.' });
     }
 });
 

@@ -87,7 +87,7 @@ app.post('/calculate-shipping', async (req, res) => {
 });
 
 app.post('/process-payment', async (req, res) => {
-    const { formData, items, shipping, userId, userEmail, userName } = req.body;
+    const { formData, items, shipping, userId, userEmail, userName, customer } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Itens do carrinho são obrigatórios.' });
@@ -110,6 +110,18 @@ app.post('/process-payment', async (req, res) => {
     const shippingCost = shipping ? Number(shipping.cost) : 0;
     const calculatedTotalAmount = subtotal + shippingCost;
 
+    const payerIdentification = formData.payer && formData.payer.identification ? {
+        type: formData.payer.identification.type,
+        number: formData.payer.identification.number
+    } : (customer && customer.cpf ? {
+        type: 'CPF',
+        number: customer.cpf.replace(/\D/g, '')
+    } : undefined);
+
+    if (!payerIdentification) {
+         console.warn("Identification missing for payer:", formData.payer);
+    }
+
     try {
         const result = await payment.create({
             body: {
@@ -120,11 +132,8 @@ app.post('/process-payment', async (req, res) => {
                 payment_method_id: formData.payment_method_id,
                 issuer_id: formData.issuer_id,
                 payer: {
-                    email: formData.payer.email,
-                    identification: {
-                        type: formData.payer.identification.type,
-                        number: formData.payer.identification.number
-                    }
+                    email: (formData.payer && formData.payer.email) || userEmail,
+                    identification: payerIdentification
                 }
             }
         });

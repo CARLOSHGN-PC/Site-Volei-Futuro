@@ -92,7 +92,7 @@ const mobileMenuButton = document.getElementById('mobile-menu-button');
 const mobileMenu = document.getElementById('mobile-menu');
 
 // Inicializa Mercado Pago
-const mp = new MercadoPago('APP_USR-73f14d8d-11d9-4e7a-bdf7-c6a3fb486924');
+const mp = new MercadoPago('APP_USR-60ccf49a-5ec7-4683-96d8-43b96998035a');
 const bricksBuilder = mp.bricks();
 
 // ===============================================================================

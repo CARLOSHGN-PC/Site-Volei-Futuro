@@ -4,8 +4,11 @@ const cors = require('cors');
 const admin = require('firebase-admin');
 const axios = require('axios');
 const sgMail = require('@sendgrid/mail');
+const { MercadoPagoConfig, Preference } = require('mercadopago');
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+const client = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
 
 // Initialize Firebase Admin SDK
 // The credentials will be loaded from an environment variable
@@ -88,77 +91,70 @@ app.post('/create-checkout', async (req, res) => {
     }
 
     const orderItems = items.map(item => ({
-        "name": item.name,
+        "title": item.name,
         "quantity": item.quantity,
-        "unit_amount": Math.round(item.price * 100)
+        "unit_price": Number(item.price),
+        "currency_id": "BRL"
     }));
 
-    const subtotal = orderItems.reduce((total, item) => total + (item.unit_amount * item.quantity), 0);
-    const shippingCost = shipping ? Math.round(shipping.cost * 100) : 0;
-    const totalAmount = subtotal + shippingCost;
+    const subtotal = orderItems.reduce((total, item) => total + (item.unit_price * item.quantity), 0);
+    const shippingCost = shipping ? Number(shipping.cost) : 0;
+    const totalAmount = (subtotal + shippingCost) * 100; // Store as integer in Firestore for consistency
     const orderReferenceId = `ref_${userId}_${new Date().getTime()}`;
 
-    const payload = {
-        "reference_id": orderReferenceId,
-        "customer": {
-            "name": userName || 'Anonymous User',
-            "email": userEmail,
-            "tax_id": customer.cpf.replace(/\D/g, ''),
-        },
-        "items": orderItems,
-        "shipping": {
-            "amount": shippingCost,
-            "address": {
-                "street": customer.address.street,
-                "number": customer.address.number,
-                "complement": customer.address.complement,
-                "locality": customer.address.neighborhood,
-                "city": customer.address.city,
-                "region_code": customer.address.state,
-                "country": "BRA",
-                "postal_code": customer.address.zipcode.replace(/\D/g, ''),
-            }
-        },
-        "notification_urls": [],
-        "charges": [{
-            "reference_id": orderReferenceId,
-            "description": "Venda de produtos Vôlei Futuro",
-            "amount": { "value": totalAmount, "currency": "BRL" },
-            "payment_method": { "type": "BOLETO", "capture": true }
-        }]
-    };
+    const preference = new Preference(client);
 
     try {
-        const response = await axios.post('https://api.pagseguro.com/orders', payload, {
-            headers: {
-                'Authorization': `Bearer ${process.env.PAGSEGURO_TOKEN}`,
-                'Content-Type': 'application/json'
+        const result = await preference.create({
+            body: {
+                items: orderItems,
+                payer: {
+                    email: userEmail,
+                    name: userName || 'Anonymous User',
+                    identification: {
+                        type: 'CPF',
+                        number: customer.cpf.replace(/\D/g, '')
+                    }
+                },
+                shipments: {
+                    cost: shippingCost,
+                    mode: 'not_specified',
+                },
+                external_reference: orderReferenceId,
+                back_urls: {
+                    success: 'https://volei-futuro.onrender.com/#account',
+                    failure: 'https://volei-futuro.onrender.com/#carrinho',
+                    pending: 'https://volei-futuro.onrender.com/#account'
+                },
+                auto_return: 'approved',
+                statement_descriptor: 'VOLEIFUTURO',
             }
         });
 
-        const checkoutLink = response.data.links.find(link => link.rel === 'PAY');
-        if (!checkoutLink) {
-            return res.status(500).json({ error: 'Checkout link not found in PagSeguro response' });
-        }
+        const checkoutLink = result.init_point;
 
         // Save order to Firestore
         const orderPayload = {
             userId: userId,
-            pagseguroOrderId: response.data.id,
+            mercadopagoPreferenceId: result.id,
             referenceId: orderReferenceId,
             createdAt: new Date(),
-            items: orderItems,
+            items: items.map(item => ({
+                name: item.name,
+                quantity: item.quantity,
+                unit_amount: Math.round(item.price * 100) // Keep consistent format for Firestore
+            })),
             shipping: shipping,
-            totalAmount: totalAmount,
+            totalAmount: Math.round(totalAmount),
             status: 'PENDING'
         };
         await admin.firestore().collection('orders').add(orderPayload);
 
-        res.json({ checkoutUrl: checkoutLink.href });
+        res.json({ checkoutUrl: checkoutLink });
 
     } catch (error) {
-        console.error("Error creating PagSeguro checkout:", error.response ? error.response.data : error.message);
-        res.status(500).json({ error: 'Could not create a PagSeguro checkout session.' });
+        console.error("Error creating Mercado Pago preference:", error);
+        res.status(500).json({ error: 'Could not create a Mercado Pago checkout session.' });
     }
 });
 

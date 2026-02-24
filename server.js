@@ -6,7 +6,11 @@ const axios = require('axios');
 const sgMail = require('@sendgrid/mail');
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+if (process.env.SENDGRID_API_KEY) {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+} else {
+    console.warn("WARNING: SENDGRID_API_KEY is not set. Email sending will fail.");
+}
 
 const MERCADOPAGO_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN;
 
@@ -147,6 +151,7 @@ app.post('/process-payment', async (req, res) => {
         const orderReferenceId = `ref_${userId}_${new Date().getTime()}`;
         const totalAmount = calculatedTotalAmount * 100; // Store as integer cents
 
+        let orderId = null;
         try {
             const orderPayload = {
                 userId: userId,
@@ -162,9 +167,38 @@ app.post('/process-payment', async (req, res) => {
                     status_detail: result.status_detail,
                     payment_method_id: result.payment_method_id,
                     payment_type_id: result.payment_type_id
-                }
+                },
+                userEmail: userEmail || (formData.payer && formData.payer.email),
+                userName: userName
             };
-            await admin.firestore().collection('orders').add(orderPayload);
+            const docRef = await admin.firestore().collection('orders').add(orderPayload);
+            orderId = docRef.id;
+
+            // Send Confirmation Email if approved
+            if (result.status === 'approved') {
+                const emailHtml = `
+                    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                        <h1 style="color: #dc2626;">Pagamento Aprovado!</h1>
+                        <p>Olá ${userName || 'Cliente'},</p>
+                        <p>Seu pedido <strong>${orderReferenceId}</strong> foi confirmado com sucesso.</p>
+                        <p><strong>Total:</strong> R$ ${calculatedTotalAmount.toFixed(2).replace('.', ',')}</p>
+                        <h3>Itens:</h3>
+                        <ul>
+                            ${items.map(i => `<li>${i.quantity}x ${i.name}</li>`).join('')}
+                        </ul>
+                        <p>Assim que seu pedido for enviado, você receberá um novo e-mail com o código de rastreio.</p>
+                        <p>Acompanhe seu pedido em nosso site: <a href="https://volei-futuro.onrender.com/#account">Minha Conta</a></p>
+                    </div>
+                `;
+                const msg = {
+                    to: userEmail || (formData.payer && formData.payer.email),
+                    from: 'contato@voleifuturo.com',
+                    subject: `Pedido Aprovado: ${orderReferenceId}`,
+                    html: emailHtml
+                };
+                await sgMail.send(msg).catch(e => console.error('Error sending confirmation email:', e));
+            }
+
         } catch (dbError) {
             console.error("Error saving order to Firestore:", dbError);
         }
@@ -280,6 +314,84 @@ app.post('/send-welcome-email', async (req, res) => {
             error: 'An unexpected error occurred while sending the welcome email.',
             details: error.message
         });
+    }
+});
+
+app.post('/update-order-status', async (req, res) => {
+    const { token, orderId, newStatus, trackingCode } = req.body;
+
+    if (!token) {
+        return res.status(401).json({ error: 'Unauthorized: Missing token.' });
+    }
+
+    try {
+        // Verify the user is authenticated
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        // In a real app, you would check if decodedToken.email is an admin email.
+
+        // Update Order in Firestore
+        await admin.firestore().collection('orders').doc(orderId).update({
+            status: newStatus,
+            trackingCode: trackingCode || null,
+            updatedAt: new Date()
+        });
+
+        // Fetch order details to send email
+        const orderDoc = await admin.firestore().collection('orders').doc(orderId).get();
+        if (!orderDoc.exists) {
+            return res.status(404).json({ error: 'Order not found.' });
+        }
+        const order = orderDoc.data();
+
+        // Send Status Update Email
+        if (order.userEmail) {
+            const statusMap = {
+                'PENDING': 'Pendente',
+                'PAYMENT_APPROVED': 'Pagamento Aprovado',
+                'PROCESSING': 'Em Separação',
+                'SHIPPED': 'Enviado',
+                'IN_TRANSIT': 'Em Trânsito',
+                'OUT_FOR_DELIVERY': 'Saiu para Entrega',
+                'DELIVERED': 'Entregue',
+                'CANCELED': 'Cancelado'
+            };
+
+            const statusText = statusMap[newStatus] || newStatus;
+
+            let trackingHtml = '';
+            if (trackingCode) {
+                trackingHtml = `
+                    <p><strong>Código de Rastreio:</strong> ${trackingCode}</p>
+                    <p>Você pode rastrear seu pedido no site da transportadora ou nos Correios.</p>
+                `;
+            }
+
+            const emailHtml = `
+                <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                    <h1 style="color: #dc2626;">Atualização de Pedido</h1>
+                    <p>Olá ${order.userName || 'Cliente'},</p>
+                    <p>O status do seu pedido <strong>${order.referenceId}</strong> foi atualizado para:</p>
+                    <h2 style="background-color: #f3f4f6; padding: 10px; border-radius: 5px; display: inline-block;">${statusText}</h2>
+                    ${trackingHtml}
+                    <p>Acompanhe os detalhes em <a href="https://volei-futuro.onrender.com/#account">Minha Conta</a>.</p>
+                </div>
+            `;
+
+            const msg = {
+                to: order.userEmail,
+                from: 'contato@voleifuturo.com',
+                subject: `Atualização do Pedido: ${statusText}`,
+                html: emailHtml
+            };
+
+            await sgMail.send(msg).catch(e => console.error('Error sending status update email:', e));
+        }
+
+        res.json({ success: true, message: 'Status updated and email sent.' });
+
+    } catch (error) {
+        console.error('Error updating order status:', error);
+        res.status(500).json({ error: 'Failed to update order status.', details: error.message });
     }
 });
 

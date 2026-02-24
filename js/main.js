@@ -839,8 +839,13 @@ async function handleCheckout() {
     }
     const userData = docSnap.data();
 
+    if (appState.calculatedShipping.length === 0) {
+        showCustomAlert("Frete Necessário", "Por favor, calcule o frete para o seu CEP antes de finalizar a compra.");
+        return;
+    }
+
     const selectedShipping = document.querySelector('input[name="shipping-option"]:checked');
-    if (!selectedShipping && appState.calculatedShipping.length > 0) {
+    if (!selectedShipping) {
         showCustomAlert("Frete Necessário", "Por favor, selecione uma opção de frete.");
         return;
     }
@@ -1101,8 +1106,16 @@ async function saveOrder(e) {
     submitButton.textContent = 'Salvando...';
 
     try {
-        const updateOrderStatus = httpsCallable(functions, 'updateOrderStatus');
-        await updateOrderStatus({ orderId, newStatus, trackingCode });
+        const token = await auth.currentUser.getIdToken();
+        const response = await fetch('/update-order-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, orderId, newStatus, trackingCode })
+        });
+
+        if (!response.ok) {
+            throw new Error('Falha ao atualizar o status do pedido.');
+        }
 
         closeModal('generic-modal');
         showCustomAlert('Sucesso!', 'O pedido foi atualizado e o cliente notificado.');

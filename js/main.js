@@ -910,6 +910,7 @@ async function renderPaymentBrick(amount, email, userData) {
                             userId: appState.currentUser.uid,
                             userEmail: appState.currentUser.email,
                             userName: appState.currentUser.displayName,
+                            customer: { cpf: userData.cpf },
                         }),
                     })
                         .then(async (response) => {

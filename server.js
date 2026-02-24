@@ -11,7 +11,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 const MERCADOPAGO_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN;
 
 if (!MERCADOPAGO_TOKEN) {
-    console.error('MERCADOPAGO_ACCESS_TOKEN is not set in .env file!');
+    console.error('ERROR: MERCADOPAGO_ACCESS_TOKEN is not set in environment variables or .env file!');
 }
 
 const client = new MercadoPagoConfig({ accessToken: MERCADOPAGO_TOKEN });
@@ -94,6 +94,11 @@ app.post('/process-payment', async (req, res) => {
     }
     if (!formData) {
         return res.status(400).json({ error: 'Dados do pagamento são obrigatórios.' });
+    }
+
+    if (!MERCADOPAGO_TOKEN) {
+        console.error("Payment attempt failed: MERCADOPAGO_ACCESS_TOKEN is missing.");
+        return res.status(500).json({ error: 'Erro de configuração no servidor. Entre em contato com o suporte.' });
     }
 
     const payment = new Payment(client);

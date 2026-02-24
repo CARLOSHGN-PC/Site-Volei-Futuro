@@ -11,7 +11,7 @@ storage.rules
 .firebaserc
 
 # Environment
-.env
+#.env
 
 # Build output
 dist

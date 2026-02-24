@@ -58,7 +58,7 @@ async function sendTransactionalEmail({ to, subject, html }) {
 
     const msg = {
         to,
-        from: 'contato@voleifuturo.com', // Must be a verified sender
+        from: process.env.EMAIL_FROM || 'contato@voleifuturo.com', // Must be a verified sender
         subject,
         html
     };
@@ -391,7 +391,9 @@ app.get('/api/orders/track/:token', async (req, res) => {
             status: order.status,
             createdAt: order.createdAt,
             items: order.items,
-            shipping: order.shipping,
+            // Mask shipping cost but keep service name if needed, or just return basic info.
+            // Here we return cost for the UI, but we could strip other shipping details if they existed.
+            shipping: { cost: order.shipping ? order.shipping.cost : 0 },
             totalAmount: order.totalAmount,
             trackingCode: order.trackingCode,
             statusTimeline: order.statusTimeline || [],
@@ -438,10 +440,16 @@ app.post('/api/orders/track/lookup', async (req, res) => {
 // MERCADO PAGO WEBHOOK
 // =============================================================================
 app.post('/api/payments/mercadopago/webhook', async (req, res) => {
-    const { query } = req;
-    const { type, 'data.id': dataId } = query;
-    const topic = query.topic || type;
-    const id = query.id || dataId;
+    const { query, body } = req;
+
+    // Support both Query Params (IPN) and Body (Webhook v2)
+    const topic = query.topic || query.type || (body && body.type) || (body && body.topic);
+    let id = query.id || query['data.id'] || (body && body.data && body.data.id) || (body && body.id);
+
+    // If still no ID found but it's a payment notification in body
+    if (!id && topic === 'payment' && body && body.data) {
+        id = body.data.id;
+    }
 
     if (!id || (topic !== 'payment' && topic !== 'merchant_order')) {
          // Respond with 200 to acknowledge receipt even if we don't process it,

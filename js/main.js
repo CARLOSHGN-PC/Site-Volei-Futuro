@@ -745,8 +745,8 @@ async function renderAccountPage() {
                         ${itemsHTML}
                     </ul>
                     <div class="flex flex-wrap gap-2 mt-4">
-                        ${order.trackingCode ? `<a href="https://www.google.com/search?q=${order.trackingCode}" target="_blank" rel="noopener noreferrer" class="text-sm bg-blue-600 hover:bg-blue-500 text-white py-1 px-3 rounded">Rastrear Entrega (${order.trackingCode})</a>` : ''}
-                        ${order.accessTrackingToken ? `<a href="#tracking?token=${order.accessTrackingToken}" class="text-sm bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded">Ver Detalhes</a>` : ''}
+                        ${order.accessTrackingToken ? `<a href="#tracking?token=${order.accessTrackingToken}" class="text-sm bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded font-bold">Rastrear Pedido</a>` : ''}
+                        ${order.trackingCode ? `<a href="https://www.google.com/search?q=${order.trackingCode}" target="_blank" rel="noopener noreferrer" class="text-sm bg-blue-600 hover:bg-blue-500 text-white py-2 px-4 rounded">Código: ${order.trackingCode}</a>` : ''}
                     </div>
                 </div>
             `;
@@ -1222,6 +1222,9 @@ function openOrderModal(id) {
 
     const modalContent = `
         <h2 class="text-2xl font-bold mb-6">Editar Pedido ${order.referenceId}</h2>
+        <div class="bg-blue-900/30 border border-blue-500 text-blue-200 p-4 rounded mb-6 text-sm">
+            <p>ℹ️ <strong>Informação:</strong> Ao salvar as alterações, um e-mail de notificação será enviado automaticamente para o cliente.</p>
+        </div>
         <form id="order-form">
             <input type="hidden" name="id" value="${id}">
             <div class="mb-4">

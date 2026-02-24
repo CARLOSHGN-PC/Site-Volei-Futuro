@@ -81,7 +81,8 @@ const orderStatusMap = {
     IN_TRANSIT: 'Em Trânsito',
     OUT_FOR_DELIVERY: 'Saiu para Entrega',
     DELIVERED: 'Entregue',
-    CANCELED: 'Cancelado'
+    CANCELED: 'Cancelado',
+    PAYMENT_REJECTED: 'Pagamento Rejeitado'
 };
 
 // ===============================================================================
@@ -409,6 +410,151 @@ function renderUserLoginPage() {
     }
 }
 
+async function renderTrackingPage() {
+    renderPage('template-tracking');
+
+    // Check for token in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token') || (window.location.hash.includes('?token=') ? window.location.hash.split('?token=')[1] : null);
+
+    if (token) {
+        await fetchAndDisplayOrder(token);
+    }
+
+    const form = document.getElementById('tracking-search-form');
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const orderReference = e.target.orderReference.value;
+            const email = e.target.email.value;
+
+            try {
+                const response = await fetch('/api/orders/track/lookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderReference, email })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Pedido não encontrado ou dados inválidos.');
+                }
+
+                const data = await response.json();
+                if (data.accessTrackingToken) {
+                    // Update URL without refreshing
+                    const newUrl = `${window.location.pathname}#tracking?token=${data.accessTrackingToken}`;
+                    window.history.pushState({ pageId: 'tracking' }, '', newUrl);
+                    await fetchAndDisplayOrder(data.accessTrackingToken);
+                }
+
+            } catch (error) {
+                console.error(error);
+                showCustomAlert('Erro', error.message);
+            }
+        });
+    }
+}
+
+async function fetchAndDisplayOrder(token) {
+    const searchContainer = document.getElementById('tracking-search-container');
+    const resultContainer = document.getElementById('tracking-result-container');
+
+    // Show loading or just hide search
+    if (searchContainer) searchContainer.classList.add('hidden');
+    if (resultContainer) resultContainer.classList.remove('hidden');
+
+    try {
+        const response = await fetch(`/api/orders/track/${token}`);
+        if (!response.ok) {
+            throw new Error('Não foi possível carregar os dados do pedido.');
+        }
+
+        const order = await response.json();
+
+        // Populate fields
+        document.getElementById('track-order-ref').textContent = order.referenceId;
+        document.getElementById('track-order-date').textContent = new Date(order.createdAt._seconds * 1000).toLocaleDateString('pt-BR');
+
+        const badge = document.getElementById('track-status-badge');
+        badge.textContent = orderStatusMap[order.status] || order.status;
+
+        // Color logic for badge
+        badge.className = 'inline-block px-4 py-2 rounded-lg font-bold text-white';
+        if (['PAYMENT_APPROVED', 'DELIVERED'].includes(order.status)) {
+            badge.classList.add('bg-green-600');
+        } else if (['CANCELED', 'PAYMENT_REJECTED'].includes(order.status)) {
+            badge.classList.add('bg-red-600');
+        } else {
+            badge.classList.add('bg-yellow-600');
+        }
+
+        // Items
+        const itemsList = document.getElementById('track-items-list');
+        itemsList.innerHTML = '';
+        order.items.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'bg-gray-700 p-4 rounded-lg flex justify-between items-center';
+
+            const div = document.createElement('div');
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'font-bold block';
+            nameSpan.textContent = item.name;
+
+            const qtySpan = document.createElement('span');
+            qtySpan.className = 'text-sm text-gray-400';
+            qtySpan.textContent = `Qtd: ${item.quantity}`;
+
+            div.appendChild(nameSpan);
+            div.appendChild(qtySpan);
+
+            const priceSpan = document.createElement('span');
+            priceSpan.className = 'font-bold';
+            priceSpan.textContent = `R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}`;
+
+            li.appendChild(div);
+            li.appendChild(priceSpan);
+            itemsList.appendChild(li);
+        });
+
+        // Financials
+        const shippingCost = order.shipping ? parseFloat(order.shipping.cost) : 0;
+        document.getElementById('track-shipping-cost').textContent = `R$ ${shippingCost.toFixed(2).replace('.', ',')}`;
+        document.getElementById('track-total').textContent = `R$ ${(order.totalAmount / 100).toFixed(2).replace('.', ',')}`;
+
+        // Tracking Code
+        const trackingContainer = document.getElementById('track-tracking-code-container');
+        if (order.trackingCode) {
+            trackingContainer.classList.remove('hidden');
+            document.getElementById('track-tracking-code').textContent = order.trackingCode;
+            // Simple generic link, could be improved based on carrier if stored
+            document.getElementById('track-tracking-link').href = `https://www.google.com/search?q=${order.trackingCode}`;
+        } else {
+             trackingContainer.classList.add('hidden');
+        }
+
+        // Timeline
+        const timelineContainer = document.getElementById('track-timeline');
+        // Sort timeline by date descending
+        const timelineEvents = (order.statusTimeline || []).sort((a, b) => new Date(b.createdAt._seconds * 1000) - new Date(a.createdAt._seconds * 1000));
+
+        timelineContainer.innerHTML = timelineEvents.map((event, index) => `
+            <div class="relative pl-8 md:pl-0 md:ml-auto md:w-1/2 md:pr-8 ${index % 2 === 0 ? 'md:ml-0 md:mr-auto md:pl-0 md:text-right md:border-r-0' : 'md:ml-auto md:pl-8 md:border-l-0'}">
+                <div class="absolute top-0 left-0 mt-1.5 -ml-1.5 h-3 w-3 rounded-full border-2 border-white bg-red-600 md:left-1/2 md:ml-[-6px]"></div>
+                <h4 class="text-lg font-bold">${event.title}</h4>
+                <span class="text-sm text-gray-400 mb-2 block">${new Date(event.createdAt._seconds * 1000).toLocaleString('pt-BR')}</span>
+                <p class="text-gray-300">${event.description}</p>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error(error);
+        if (searchContainer) searchContainer.classList.remove('hidden');
+        if (resultContainer) resultContainer.classList.add('hidden');
+        showCustomAlert('Erro', 'Não foi possível carregar o pedido. Verifique o link ou tente novamente.');
+    }
+}
+
 async function handleRegistrationSubmit(e) {
     e.preventDefault();
     const name = e.target.name.value;
@@ -598,7 +744,10 @@ async function renderAccountPage() {
                     <ul class="list-disc list-inside text-gray-300 mb-2">
                         ${itemsHTML}
                     </ul>
-                    ${order.trackingCode ? `<p class="text-sm mt-2"><strong>Rastreio:</strong> <a href="https://www.google.com/search?q=${order.trackingCode}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">${order.trackingCode}</a></p>` : ''}
+                    <div class="flex flex-wrap gap-2 mt-4">
+                        ${order.trackingCode ? `<a href="https://www.google.com/search?q=${order.trackingCode}" target="_blank" rel="noopener noreferrer" class="text-sm bg-blue-600 hover:bg-blue-500 text-white py-1 px-3 rounded">Rastrear Entrega (${order.trackingCode})</a>` : ''}
+                        ${order.accessTrackingToken ? `<a href="#tracking?token=${order.accessTrackingToken}" class="text-sm bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded">Ver Detalhes</a>` : ''}
+                    </div>
                 </div>
             `;
         });
@@ -933,7 +1082,11 @@ async function renderPaymentBrick(amount, email, userData) {
                                 updateCartDisplay();
                                 updateCartBadge();
                                 showCustomAlert("Pagamento Processado", "Seu pedido foi recebido com sucesso!");
-                                navigateTo('account');
+                                if (response.accessTrackingToken) {
+                                    navigateTo(`tracking?token=${response.accessTrackingToken}`);
+                                } else {
+                                    navigateTo('account');
+                                }
                             } else {
                                 reject();
                                 const statusMsg = response.status_detail ? `Detalhe: ${response.status_detail}` : 'Por favor, verifique os dados e tente novamente.';
@@ -1027,13 +1180,17 @@ function renderAdminOrders() {
         const total = (order.totalAmount / 100).toFixed(2).replace('.', ',');
         return `
             <tr class="border-b border-gray-700">
-                <td class="p-4">${order.referenceId}</td>
+                <td class="p-4 font-bold">${order.referenceId}</td>
                 <td class="p-4">${orderDate}</td>
                 <td class="p-4">${order.userName || order.userEmail}</td>
-                <td class="p-4">R$ ${total}</td>
-                <td class="p-4">${orderStatusMap[order.status] || order.status || 'PENDENTE'}</td>
+                <td class="p-4 text-red-400">R$ ${total}</td>
                 <td class="p-4">
-                    <button data-admin-action="open-order-modal" data-id="${order.id}" class="text-green-400 hover:text-green-300">Editar</button>
+                    <span class="px-2 py-1 rounded text-xs font-bold ${['PAYMENT_APPROVED', 'DELIVERED'].includes(order.status) ? 'bg-green-900 text-green-300' : 'bg-gray-700 text-gray-300'}">
+                        ${orderStatusMap[order.status] || order.status || 'PENDENTE'}
+                    </span>
+                </td>
+                <td class="p-4">
+                    <button data-admin-action="open-order-modal" data-id="${order.id}" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm transition">Gerenciar</button>
                 </td>
             </tr>
         `;
@@ -1911,7 +2068,7 @@ const pageRenderers = {
     'calendario': renderCalendarPage, 'galeria': renderGalleryPage, 'loja': renderShopPage,
     'carrinho': renderCartPage, 'inscricao': renderInscriptionPage, 'login': renderUserLoginPage,
     'signup': renderSignupPage, 'account': renderAccountPage, 'admin-login': renderAdminLoginPage,
-    'privacy': renderPrivacyPolicyPage, 'admin': renderAdminPage
+    'privacy': renderPrivacyPolicyPage, 'admin': renderAdminPage, 'tracking': renderTrackingPage
 };
 
 function navigateTo(pageId) {
@@ -1920,14 +2077,21 @@ function navigateTo(pageId) {
     const isAdminPage = pageId.startsWith('admin');
     header.style.display = isAdminPage ? 'none' : '';
     footer.style.display = isAdminPage ? 'none' : '';
-    const basePageId = isAdminPage ? 'admin' : pageId;
+
+    let basePageId = isAdminPage ? 'admin' : pageId;
+
+    // Handle query params in pageId
+    if (basePageId.includes('?')) {
+        basePageId = basePageId.split('?')[0];
+    }
+
     const renderFunction = pageRenderers[basePageId];
     if (renderFunction) {
         appRoot.style.opacity = 0;
         setTimeout(() => {
             renderFunction(); appRoot.style.opacity = 1; window.scrollTo(0, 0);
             if (window.location.hash !== `#${pageId}`) history.pushState({pageId}, '', `#${pageId}`);
-            updateActiveLink(pageId);
+            updateActiveLink(basePageId);
         }, 200);
     }
 }
@@ -2039,8 +2203,15 @@ function handleInitialPageLoad() {
             listenersAttached = true;
         }
 
-        // Always start on the home page as requested by the user.
-        const initialPage = 'home';
+        // Check if there is a hash to navigate to, otherwise go to home
+        let initialPage = window.location.hash.substring(1);
+
+        // Handle query params in hash (e.g. #tracking?token=...)
+        if (initialPage.includes('?')) {
+            initialPage = initialPage.split('?')[0];
+        }
+
+        if (!initialPage) initialPage = 'home';
 
         // If a logged-out user tries to access a protected page, redirect them.
         const protectedPages = ['account', 'admin'];

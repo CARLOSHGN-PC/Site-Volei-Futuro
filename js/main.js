@@ -91,6 +91,10 @@ const appRoot = document.getElementById('app-root');
 const mobileMenuButton = document.getElementById('mobile-menu-button');
 const mobileMenu = document.getElementById('mobile-menu');
 
+// Inicializa Mercado Pago
+const mp = new MercadoPago('APP_USR-73f14d8d-11d9-4e7a-bdf7-c6a3fb486924');
+const bricksBuilder = mp.bricks();
+
 // ===============================================================================
 // RENDERIZAÇÃO DE PÁGINAS (Leitura do appState)
 // ===============================================================================
@@ -825,7 +829,6 @@ async function handleCheckout() {
         return;
     }
 
-    // Check for user address
     const userDocRef = doc(db, 'users', appState.currentUser.uid);
     const docSnap = await getDoc(userDocRef);
 
@@ -836,52 +839,103 @@ async function handleCheckout() {
     }
     const userData = docSnap.data();
 
-
     const selectedShipping = document.querySelector('input[name="shipping-option"]:checked');
     if (!selectedShipping && appState.calculatedShipping.length > 0) {
         showCustomAlert("Frete Necessário", "Por favor, selecione uma opção de frete.");
         return;
     }
 
-    const shippingDetails = selectedShipping ? {
-        id: selectedShipping.value,
-        cost: parseFloat(selectedShipping.dataset.cost)
-    } : null;
+    const shippingCost = selectedShipping ? parseFloat(selectedShipping.dataset.cost) : 0;
+    const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    const totalAmount = subtotal + shippingCost;
 
-    try {
-        const response = await fetch('/create-checkout', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
+    // Show Payment Modal
+    const modalContent = `
+        <h2 class="text-2xl font-bold mb-4 text-center">Pagamento</h2>
+        <div id="paymentBrick_container"></div>
+    `;
+    openModal('generic-modal', null, modalContent);
+
+    renderPaymentBrick(totalAmount, appState.currentUser.email, userData);
+}
+
+async function renderPaymentBrick(amount, email, userData) {
+    const settings = {
+        initialization: {
+            amount: amount, // Total amount to be paid
+            payer: {
+                firstName: "",
+                lastName: "",
+                email: email,
             },
-            body: JSON.stringify({
-                items: cart,
-                shipping: shippingDetails,
-                userId: appState.currentUser.uid,
-                userEmail: appState.currentUser.email,
-                userName: appState.currentUser.displayName,
-                customer: {
-                    cpf: userData.cpf,
-                    address: userData.address
-                }
-            }),
-        });
+        },
+        customization: {
+            paymentMethods: {
+                ticket: "all",
+                bankTransfer: "all",
+                creditCard: "all",
+                debitCard: "all",
+                mercadoPago: "all",
+            },
+        },
+        callbacks: {
+            onReady: () => {
+                // Callback called when Brick is ready
+            },
+            onSubmit: ({ selectedPaymentMethod, formData }) => {
+                return new Promise((resolve, reject) => {
+                    const selectedShipping = document.querySelector('input[name="shipping-option"]:checked');
+                    const shippingDetails = selectedShipping ? {
+                        id: selectedShipping.value,
+                        cost: parseFloat(selectedShipping.dataset.cost)
+                    } : null;
 
-        if (!response.ok) {
-            throw new Error('A resposta do servidor não foi OK.');
-        }
-
-        const result = await response.json();
-
-        if (result && result.checkoutUrl) {
-            window.location.href = result.checkoutUrl;
-        } else {
-            throw new Error("URL de checkout não recebida.");
-        }
-    } catch (error) {
-        console.error("Erro ao finalizar a compra: ", error);
-        showCustomAlert("Erro no Checkout", "Ocorreu um erro ao tentar se comunicar com o sistema de pagamento. Por favor, tente novamente mais tarde.");
-    }
+                    fetch("/process-payment", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            formData,
+                            items: cart,
+                            shipping: shippingDetails,
+                            userId: appState.currentUser.uid,
+                            userEmail: appState.currentUser.email,
+                            userName: appState.currentUser.displayName,
+                        }),
+                    })
+                        .then((response) => response.json())
+                        .then((response) => {
+                            if (response.status === 'approved' || response.status === 'in_process') {
+                                resolve();
+                                closeModal('generic-modal');
+                                cart = []; // Clear cart
+                                updateCartDisplay();
+                                updateCartBadge();
+                                showCustomAlert("Pagamento Processado", "Seu pedido foi recebido com sucesso!");
+                                navigateTo('account');
+                            } else {
+                                reject();
+                                showCustomAlert("Pagamento Não Aprovado", `Status: ${response.status_detail || 'Erro ao processar'}`);
+                            }
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                            reject();
+                            showCustomAlert("Erro", "Ocorreu um erro ao processar o pagamento.");
+                        });
+                });
+            },
+            onError: (error) => {
+                console.error(error);
+            },
+        },
+    };
+    window.paymentBrickController = await bricksBuilder.create(
+        "payment",
+        "paymentBrick_container",
+        settings
+    );
 }
 
 // ===============================================================================

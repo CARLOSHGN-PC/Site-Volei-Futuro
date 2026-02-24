@@ -85,12 +85,24 @@ app.post('/process-payment', async (req, res) => {
 
     const payment = new Payment(client);
 
+    // Calculate the total amount on the server to prevent manipulation
+    const orderItems = items.map(item => ({
+        "title": item.name,
+        "quantity": Number(item.quantity),
+        "unit_price": Number(item.price),
+        "currency_id": "BRL"
+    }));
+
+    const subtotal = orderItems.reduce((total, item) => total + (item.unit_price * item.quantity), 0);
+    const shippingCost = shipping ? Number(shipping.cost) : 0;
+    const calculatedTotalAmount = subtotal + shippingCost;
+
     try {
         const result = await payment.create({
             body: {
-                transaction_amount: formData.transaction_amount,
+                transaction_amount: calculatedTotalAmount,
                 token: formData.token,
-                description: formData.description,
+                description: formData.description || 'Volei Futuro Purchase',
                 installments: formData.installments,
                 payment_method_id: formData.payment_method_id,
                 issuer_id: formData.issuer_id,
@@ -106,7 +118,7 @@ app.post('/process-payment', async (req, res) => {
 
         // Save order to Firestore
         const orderReferenceId = `ref_${userId}_${new Date().getTime()}`;
-        const totalAmount = formData.transaction_amount * 100; // Store as integer cents
+        const totalAmount = calculatedTotalAmount * 100; // Store as integer cents
 
         try {
             const orderPayload = {
@@ -138,10 +150,26 @@ app.post('/process-payment', async (req, res) => {
 
     } catch (error) {
         console.error("Error processing payment:", error);
+
+        let errorMessage = 'Could not process payment.';
+        let errorDetails = null;
+
         if (error.cause) {
             console.error('Cause:', JSON.stringify(error.cause, null, 2));
+            // Try to extract a meaningful message from Mercado Pago error response
+            if (Array.isArray(error.cause)) {
+                 errorDetails = error.cause.map(e => e.description || e.code).join(', ');
+            } else if (error.cause.description) {
+                 errorDetails = error.cause.description;
+            }
         }
-        res.status(500).json({ error: 'Could not process payment.' });
+
+        // Also check if error.message is useful
+        if (error.message) {
+             errorMessage = error.message;
+        }
+
+        res.status(500).json({ error: errorMessage, details: errorDetails });
     }
 });
 

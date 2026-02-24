@@ -92,7 +92,7 @@ app.post('/create-checkout', async (req, res) => {
 
     const orderItems = items.map(item => ({
         "title": item.name,
-        "quantity": item.quantity,
+        "quantity": Number(item.quantity),
         "unit_price": Number(item.price),
         "currency_id": "BRL"
     }));

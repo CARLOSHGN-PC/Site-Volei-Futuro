@@ -133,27 +133,35 @@ app.post('/create-checkout', async (req, res) => {
 
         const checkoutLink = result.init_point;
 
-        // Save order to Firestore
-        const orderPayload = {
-            userId: userId,
-            mercadopagoPreferenceId: result.id,
-            referenceId: orderReferenceId,
-            createdAt: new Date(),
-            items: items.map(item => ({
-                name: item.name,
-                quantity: item.quantity,
-                unit_amount: Math.round(item.price * 100) // Keep consistent format for Firestore
-            })),
-            shipping: shipping,
-            totalAmount: Math.round(totalAmount),
-            status: 'PENDING'
-        };
-        await admin.firestore().collection('orders').add(orderPayload);
+        // Save order to Firestore (in a separate try-catch to not block checkout)
+        try {
+            const orderPayload = {
+                userId: userId,
+                mercadopagoPreferenceId: result.id,
+                referenceId: orderReferenceId,
+                createdAt: new Date(),
+                items: items.map(item => ({
+                    name: item.name,
+                    quantity: item.quantity,
+                    unit_amount: Math.round(item.price * 100) // Keep consistent format for Firestore
+                })),
+                shipping: shipping,
+                totalAmount: Math.round(totalAmount),
+                status: 'PENDING'
+            };
+            await admin.firestore().collection('orders').add(orderPayload);
+        } catch (dbError) {
+            console.error("Error saving order to Firestore:", dbError);
+            // Proceed with checkout even if saving order fails (user can contact support)
+        }
 
         res.json({ checkoutUrl: checkoutLink });
 
     } catch (error) {
         console.error("Error creating Mercado Pago preference:", error);
+        if (error.cause) {
+            console.error('Cause:', JSON.stringify(error.cause, null, 2));
+        }
         res.status(500).json({ error: 'Could not create a Mercado Pago checkout session.' });
     }
 });

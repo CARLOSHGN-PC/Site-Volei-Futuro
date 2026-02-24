@@ -849,10 +849,13 @@ async function handleCheckout() {
     const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
     const totalAmount = subtotal + shippingCost;
 
-    // Show Payment Modal
+    // Show Payment Modal with better styling
     const modalContent = `
-        <h2 class="text-2xl font-bold mb-4 text-center">Pagamento</h2>
-        <div id="paymentBrick_container"></div>
+        <div class="bg-gray-800 p-2 rounded-lg">
+            <h2 class="text-2xl font-bold mb-6 text-center text-white">Finalizar Pagamento</h2>
+            <p class="text-center text-gray-400 mb-6">Total a pagar: <span class="text-red-500 font-bold text-xl">R$ ${totalAmount.toFixed(2).replace('.', ',')}</span></p>
+            <div id="paymentBrick_container" class="bg-gray-100 rounded-lg p-4"></div>
+        </div>
     `;
     openModal('generic-modal', null, modalContent);
 
@@ -870,6 +873,11 @@ async function renderPaymentBrick(amount, email, userData) {
             },
         },
         customization: {
+            visual: {
+                style: {
+                    theme: 'dark', // Use dark theme
+                }
+            },
             paymentMethods: {
                 ticket: "all",
                 bankTransfer: "all",
@@ -904,7 +912,13 @@ async function renderPaymentBrick(amount, email, userData) {
                             userName: appState.currentUser.displayName,
                         }),
                     })
-                        .then((response) => response.json())
+                        .then(async (response) => {
+                            const data = await response.json();
+                            if (!response.ok) {
+                                throw new Error(data.error || data.details || 'Erro desconhecido no servidor.');
+                            }
+                            return data;
+                        })
                         .then((response) => {
                             if (response.status === 'approved' || response.status === 'in_process') {
                                 resolve();
@@ -916,13 +930,14 @@ async function renderPaymentBrick(amount, email, userData) {
                                 navigateTo('account');
                             } else {
                                 reject();
-                                showCustomAlert("Pagamento Não Aprovado", `Status: ${response.status_detail || 'Erro ao processar'}`);
+                                const statusMsg = response.status_detail ? `Detalhe: ${response.status_detail}` : 'Por favor, verifique os dados e tente novamente.';
+                                showCustomAlert("Pagamento Não Aprovado", statusMsg);
                             }
                         })
                         .catch((error) => {
-                            console.error(error);
+                            console.error("Erro no pagamento:", error);
                             reject();
-                            showCustomAlert("Erro", "Ocorreu um erro ao processar o pagamento.");
+                            showCustomAlert("Erro no Pagamento", `Não foi possível processar seu pagamento. ${error.message}`);
                         });
                 });
             },

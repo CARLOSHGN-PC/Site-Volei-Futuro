@@ -8,7 +8,13 @@ const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-const client = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
+const MERCADOPAGO_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN;
+
+if (!MERCADOPAGO_TOKEN) {
+    console.error('MERCADOPAGO_ACCESS_TOKEN is not set in .env file!');
+}
+
+const client = new MercadoPagoConfig({ accessToken: MERCADOPAGO_TOKEN });
 
 // Initialize Firebase Admin SDK
 // The credentials will be loaded from an environment variable
@@ -82,6 +88,13 @@ app.post('/calculate-shipping', async (req, res) => {
 
 app.post('/process-payment', async (req, res) => {
     const { formData, items, shipping, userId, userEmail, userName } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Itens do carrinho são obrigatórios.' });
+    }
+    if (!formData) {
+        return res.status(400).json({ error: 'Dados do pagamento são obrigatórios.' });
+    }
 
     const payment = new Payment(client);
 
